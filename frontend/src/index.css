@@ -1,0 +1,56 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --bg-page: #faf9f6;
+    --text-primary: #1c1917;
+    --card-bg: #ffffff;
+    --card-border: #e7e5e4;
+  }
+
+  .dark {
+    --bg-page: #141211;
+    --text-primary: #f5f5f4;
+    --card-bg: #1c1917;
+    --card-border: #292524;
+  }
+
+  body {
+    font-family: 'Inter', 'Noto Sans Tamil', system-ui, sans-serif;
+    line-height: 1.6;
+    background-color: var(--bg-page);
+    color: var(--text-primary);
+  }
+}
+
+/* Custom leaflet fixes */
+.leaflet-container {
+  width: 100%;
+  height: 100%;
+  border-radius: 0.75rem;
+  z-index: 10;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: #d6d3d1;
+  border-radius: 9999px;
+}
+.dark ::-webkit-scrollbar-thumb {
+  background: #44403c;
+}
+
+/* Glassmorphism helpers */
+.glass-header {
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
