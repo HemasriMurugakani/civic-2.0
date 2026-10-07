@@ -41,6 +41,13 @@ class EvidenceType(str, enum.Enum):
     AFTER = "after"
 
 
+class BadgeRarity(str, enum.Enum):
+    COMMON = "common"
+    RARE = "rare"
+    EPIC = "epic"
+    LEGENDARY = "legendary"
+
+
 class Department(Base):
     __tablename__ = "departments"
 
@@ -84,6 +91,9 @@ class User(Base):
     department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
     ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True, index=True)
     preferred_language = Column(String(10), default="en", nullable=False)
+    public_display_name = Column(String(100), nullable=True)
+    public_id = Column(String(50), unique=True, index=True, nullable=True)
+    leaderboard_opt_out = Column(Boolean, default=False, nullable=False)
     is_active = Column(Boolean, default=True, nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
@@ -92,7 +102,9 @@ class User(Base):
     ward = relationship("Ward", back_populates="users")
     complaints = relationship("Complaint", back_populates="citizen", foreign_keys="Complaint.citizen_id")
     assigned_complaints = relationship("ComplaintAssignment", back_populates="officer", foreign_keys="ComplaintAssignment.officer_id")
-    notifications = relationship("Notification", back_populates="user")
+    notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
+    points_entries = relationship("PointsLedger", back_populates="user", cascade="all, delete-orphan")
+    badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
 
 
 class ComplaintCategory(Base):
@@ -296,3 +308,61 @@ class ComplaintCluster(Base):
     complaint_count = Column(Integer, default=0, nullable=False)
     description = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+
+# ==========================================
+# Gamification Core Models (Milestone F1)
+# ==========================================
+class PointsLedger(Base):
+    __tablename__ = "points_ledger"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    points = Column(Integer, nullable=False)
+    reason = Column(String(100), nullable=False, index=True)
+    source_type = Column(String(50), nullable=False, index=True)
+    source_id = Column(String(100), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    user = relationship("User", back_populates="points_entries")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "reason", "source_type", "source_id", name="uq_points_ledger_idempotency"),
+        Index("ix_points_ledger_user_created", "user_id", "created_at"),
+    )
+
+
+class Badge(Base):
+    __tablename__ = "badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    code = Column(String(50), unique=True, nullable=False, index=True)
+    name_en = Column(String(255), nullable=False)
+    name_ta = Column(String(255), nullable=False)
+    description_en = Column(Text, nullable=False)
+    description_ta = Column(Text, nullable=False)
+    icon = Column(String(100), nullable=False)
+    rarity = Column(SQLEnum(BadgeRarity), default=BadgeRarity.COMMON, nullable=False)
+    event_type = Column(String(100), nullable=False, index=True)
+    threshold = Column(Integer, default=1, nullable=False)
+    points_reward = Column(Integer, default=25, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user_badges = relationship("UserBadge", back_populates="badge", cascade="all, delete-orphan")
+
+
+class UserBadge(Base):
+    __tablename__ = "user_badges"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    badge_id = Column(Integer, ForeignKey("badges.id"), nullable=False, index=True)
+    earned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="badges")
+    badge = relationship("Badge", back_populates="user_badges")
+
+    __table_args__ = (
+        UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),
+    )

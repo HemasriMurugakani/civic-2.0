@@ -22,6 +22,7 @@ import { OfficerWorkbenchPage } from './pages/officer/OfficerWorkbenchPage';
 import { DepartmentDashboardPage } from './pages/department/DepartmentDashboardPage';
 import { GovernmentAdminPage } from './pages/admin/GovernmentAdminPage';
 import { GisMapPage } from './pages/gis/GisMapPage';
+import { LeaderboardPage } from './pages/citizen/LeaderboardPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -49,6 +50,7 @@ export function App() {
               <Route path="/login" element={<LoginPage />} />
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/track" element={<TrackComplaintPage />} />
+              <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

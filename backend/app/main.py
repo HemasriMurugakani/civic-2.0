@@ -19,6 +19,8 @@ from app.api.v1.master import router as master_router
 from app.api.v1.analytics import router as analytics_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.uploads import router as uploads_router
+from app.api.v1.gamification import router as gamification_router
+from app.core.database import engine, Base
 
 # Configure logging
 logging.basicConfig(
@@ -44,6 +46,12 @@ def run_sla_check_job():
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    # Ensure new tables exist
+    try:
+        Base.metadata.create_all(bind=engine)
+    except Exception as e:
+        logger.warning(f"Could not auto-create tables: {e}")
+
     # Startup: Start APScheduler
     try:
         scheduler.add_job(
@@ -97,6 +105,7 @@ app.include_router(master_router, prefix=api_v1_prefix)
 app.include_router(analytics_router, prefix=api_v1_prefix)
 app.include_router(notifications_router, prefix=api_v1_prefix)
 app.include_router(uploads_router, prefix=api_v1_prefix)
+app.include_router(gamification_router, prefix=api_v1_prefix)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():

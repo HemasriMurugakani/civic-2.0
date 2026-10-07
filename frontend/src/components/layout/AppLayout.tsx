@@ -3,7 +3,7 @@ import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, PlusCircle, Search, Kanban, BarChart3,
-  Map, Database, Palette, LogOut, Menu, X, Shield,
+  Map, Database, Palette, LogOut, Menu, X, Shield, Trophy,
   ChevronLeft, ChevronRight, User as UserIcon
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
@@ -43,6 +43,7 @@ export const AppLayout: React.FC = () => {
         { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
         { path: '/report', label: t('nav.fileComplaint'), icon: PlusCircle },
         { path: '/issues', label: 'Issues board & map', icon: Search },
+        { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
       );
     } else if (role === 'officer') {
       links.push(

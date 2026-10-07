@@ -18,7 +18,8 @@ from app.models.entities import (
     User, UserRole, Department, Ward, ComplaintCategory, Complaint,
     ComplaintAssignment, ComplaintStatusHistory, ComplaintComment,
     ComplaintEvidence, CitizenFeedback, SLARule, Notification,
-    ComplaintStatus, ComplaintPriority, ComplaintChannel, EvidenceType
+    ComplaintStatus, ComplaintPriority, ComplaintChannel, EvidenceType,
+    PointsLedger, Badge, UserBadge, BadgeRarity
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -33,6 +34,192 @@ def create_sample_evidence_files(upload_dir: str):
                 f.write(b"\xff\xd8\xff\xe0\x00\x10JFIF\x00\x01\x01\x01\x00`\x00`\x00\x00\xff\xdb\x00C\x00sample civic evidence bytes")
         created_paths.append(s)
     return created_paths
+
+def seed_gamification(db: Session):
+    print("🎖️ Seeding Gamification: Badges & Citizen Points Ledger (Milestone F1)...")
+    from app.services.gamification_service import GamificationService
+
+    badges_data = [
+        {
+            "code": "first_voice",
+            "name_en": "First Voice",
+            "name_ta": "முதல் குரல்",
+            "description_en": "Submitted your first civic report on the platform.",
+            "description_ta": "உங்கள் முதல் பொதுப் பிரச்சினையைப் பதிவு செய்துள்ளீர்கள்.",
+            "icon": "Megaphone",
+            "rarity": BadgeRarity.COMMON,
+            "event_type": "report_submitted",
+            "threshold": 1,
+            "points_reward": 15,
+        },
+        {
+            "code": "vigilant_eye_5",
+            "name_en": "Vigilant Eye",
+            "name_ta": "விழிப்புணர்வு கண்கள்",
+            "description_en": "Reported 5 validated community civic issues.",
+            "description_ta": "5 பொதுப் பிரச்சினைகளை அடையாளம் கண்டுள்ளீர்கள்.",
+            "icon": "Eye",
+            "rarity": BadgeRarity.RARE,
+            "event_type": "report_submitted",
+            "threshold": 5,
+            "points_reward": 35,
+        },
+        {
+            "code": "neighborhood_guardian_20",
+            "name_en": "Neighborhood Guardian",
+            "name_ta": "பகுதி பாதுகாவலர்",
+            "description_en": "Reported 20 civic issues to keep your ward safe.",
+            "description_ta": "உங்கள் வார்டைப் பாதுகாக்க 20 பிரச்சினைகளைப் பதிவு செய்துள்ளீர்கள்.",
+            "icon": "ShieldCheck",
+            "rarity": BadgeRarity.EPIC,
+            "event_type": "report_submitted",
+            "threshold": 20,
+            "points_reward": 75,
+        },
+        {
+            "code": "fact_checker_1",
+            "name_en": "Fact Checker",
+            "name_ta": "உண்மை சரிபார்ப்பாளர்",
+            "description_en": "Verified your first community report.",
+            "description_ta": "முதல் சமூக அறிக்கையைச் சரிபார்த்துள்ளீர்கள்.",
+            "icon": "CheckCircle2",
+            "rarity": BadgeRarity.COMMON,
+            "event_type": "verified_other_report",
+            "threshold": 1,
+            "points_reward": 10,
+        },
+        {
+            "code": "eagle_eye_10",
+            "name_en": "Eagle Eye Verifier",
+            "name_ta": "கழுகுப்பார்வை தணிக்கையாளர்",
+            "description_en": "Assisted with 10 community verifications across your town.",
+            "description_ta": "10 பொதுப் புகார்களைக் களத்தில் உறுதி செய்துள்ளீர்கள்.",
+            "icon": "CheckCheck",
+            "rarity": BadgeRarity.RARE,
+            "event_type": "verified_other_report",
+            "threshold": 10,
+            "points_reward": 30,
+        },
+        {
+            "code": "resolution_auditor",
+            "name_en": "Audit Confirm",
+            "name_ta": "தீர்வு தணிக்கையாளர்",
+            "description_en": "Confirmed official repair and closed a grievance.",
+            "description_ta": "அரசு மேற்கொண்ட சீரமைப்பை உறுதிசெய்துள்ளீர்கள்.",
+            "icon": "BadgeCheck",
+            "rarity": BadgeRarity.COMMON,
+            "event_type": "fix_confirmed",
+            "threshold": 1,
+            "points_reward": 20,
+        },
+        {
+            "code": "civic_scholar",
+            "name_en": "Civic Scholar",
+            "name_ta": "குடிமை அறிஞர்",
+            "description_en": "Completed a civic education learning module.",
+            "description_ta": "குடிமை விழிப்புணர்வு பாடத்தை நிறைவு செய்துள்ளீர்கள்.",
+            "icon": "GraduationCap",
+            "rarity": BadgeRarity.COMMON,
+            "event_type": "module_completed",
+            "threshold": 1,
+            "points_reward": 50,
+        },
+        {
+            "code": "spot_caretaker",
+            "name_en": "Green Caretaker",
+            "name_ta": "பசுமை பாதுகாவலர்",
+            "description_en": "Adopted a local public spot for community upkeep.",
+            "description_ta": "ஒரு பொது இடத்தை தத்தெடுத்து பராமரித்துள்ளீர்கள்.",
+            "icon": "HeartHandshake",
+            "rarity": BadgeRarity.RARE,
+            "event_type": "spot_adopted",
+            "threshold": 1,
+            "points_reward": 100,
+        },
+        {
+            "code": "campaign_hero",
+            "name_en": "Civic Mobilizer",
+            "name_ta": "மக்கள் ஒருங்கிணைப்பாளர்",
+            "description_en": "Participated in an official seasonal civic campaign.",
+            "description_ta": "பருவகால மக்கள் இயக்கத்தில் தீவிரமாகப் பங்கேற்றுள்ளீர்கள்.",
+            "icon": "Flame",
+            "rarity": BadgeRarity.EPIC,
+            "event_type": "campaign_joined",
+            "threshold": 1,
+            "points_reward": 40,
+        },
+        {
+            "code": "tamil_nadu_champion",
+            "name_en": "Tamil Nadu Civic Champion",
+            "name_ta": "தமிழ்நாடு மக்கள் நாயகன்",
+            "description_en": "Reached 750+ points as a premier civic contributor.",
+            "description_ta": "750+ புள்ளிகளை அடைந்து முன்னணி சாதனையாளராக விளங்குகிறீர்கள்.",
+            "icon": "Trophy",
+            "rarity": BadgeRarity.LEGENDARY,
+            "event_type": "score_threshold",
+            "threshold": 750,
+            "points_reward": 150,
+        },
+    ]
+
+    for bd in badges_data:
+        existing = db.query(Badge).filter(Badge.code == bd["code"]).first()
+        if not existing:
+            b = Badge(**bd, is_active=True)
+            db.add(b)
+    db.commit()
+
+    # Ensure pseudonyms and seed points for citizens
+    citizens = db.query(User).filter(User.role == UserRole.CITIZEN).all()
+    gamification = GamificationService(db)
+
+    for idx, c in enumerate(citizens):
+        if not c.public_id:
+            c.public_id = f"cit-{c.id:04d}"
+        if not c.public_display_name:
+            c.public_display_name = f"{c.name.split()[0]} {c.name.split()[-1][0]}."
+        db.add(c)
+
+    db.commit()
+
+    # Seed points from their complaints
+    for c in citizens:
+        complaints = db.query(Complaint).filter(Complaint.citizen_id == c.id).all()
+        for comp in complaints:
+            # report_submitted points
+            gamification.award_points(
+                user_id=c.id,
+                reason="report_submitted",
+                source_type="complaint",
+                source_id=str(comp.id),
+                check_daily_cap=False,
+            )
+            # fix_confirmed points
+            if comp.status in [ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]:
+                gamification.award_points(
+                    user_id=c.id,
+                    reason="fix_confirmed",
+                    source_type="complaint",
+                    source_id=str(comp.id),
+                    check_daily_cap=False,
+                )
+
+        # Seed realistic verification points (between 2 and 15 verifications)
+        verif_count = random.randint(2, 12)
+        for v_i in range(verif_count):
+            gamification.award_points(
+                user_id=c.id,
+                reason="verified_other_report",
+                source_type="complaint",
+                source_id=f"demo_seed_v_{c.id}_{v_i}",
+                check_daily_cap=False,
+            )
+
+        # Evaluate badges
+        gamification.evaluate_badges(c.id)
+
+    db.commit()
+    print("✅ Seeded badges, points, and citizen progress for all citizens.")
 
 def seed_database(reset: bool = False):
     random.seed(42)
@@ -594,6 +781,9 @@ def seed_database(reset: bool = False):
 
     db.commit()
     print("✅ Successfully seeded 3000 realistic complaints!")
+
+    # 5. Seed Gamification: Badges & Initial Points (Milestone F1)
+    seed_gamification(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)

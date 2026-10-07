@@ -4,8 +4,9 @@ import { useTranslation } from 'react-i18next';
 import { PlusCircle, Search, Clock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { ComplaintItem } from '@/lib/types';
+import { ComplaintItem, GamificationProgress } from '@/lib/types';
 import { ComplaintCard } from '@/components/common/ComplaintCard';
+import { CivicLevelCard } from '@/components/gamification/CivicLevelCard';
 import { PageHeader, EmptyState } from '@/components/common/CommonUi';
 
 export const CitizenDashboardPage: React.FC = () => {
@@ -13,7 +14,9 @@ export const CitizenDashboardPage: React.FC = () => {
   const { t } = useTranslation();
 
   const [complaints, setComplaints] = useState<ComplaintItem[]>([]);
+  const [gamification, setGamification] = useState<GamificationProgress | null>(null);
   const [loading, setLoading] = useState(true);
+  const [loadingGamification, setLoadingGamification] = useState(true);
 
   useEffect(() => {
     api
@@ -21,6 +24,12 @@ export const CitizenDashboardPage: React.FC = () => {
       .then((data) => setComplaints(data))
       .catch(() => {})
       .finally(() => setLoading(false));
+
+    api
+      .getGamificationProgress()
+      .then((data) => setGamification(data))
+      .catch(() => {})
+      .finally(() => setLoadingGamification(false));
   }, []);
 
   const activeComplaints = complaints.filter(
@@ -54,6 +63,9 @@ export const CitizenDashboardPage: React.FC = () => {
           <span>Report an Issue</span>
         </Link>
       </div>
+
+      {/* Civic Recognition & Level Progress (Milestone F1) */}
+      <CivicLevelCard progress={gamification} loading={loadingGamification} />
 
       {/* Quick Summary Chips */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">

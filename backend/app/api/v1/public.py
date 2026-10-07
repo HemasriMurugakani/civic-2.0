@@ -318,25 +318,52 @@ def get_public_issue_detail(issue_id: str, db: Session = Depends(get_db)):
 
 
 @router.post("/issues/{issue_id}/verify")
-def verify_public_issue(issue_id: str, payload: Dict[str, Any] = Body(...), db: Session = Depends(get_db)):
+def verify_public_issue(
+    issue_id: str,
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user),
+):
     c_id = int(issue_id) if issue_id.isdigit() else 1
     action = payload.get("action", "confirm")
 
     if c_id not in _COMMUNITY_VOTES:
         _COMMUNITY_VOTES[c_id] = {"confirmations": 0, "disputes": 0}
 
+    points_earned = 0
     if action == "confirm":
         _COMMUNITY_VOTES[c_id]["confirmations"] += 1
+        if current_user:
+            complaint = db.query(Complaint).filter(Complaint.id == c_id).first()
+            author_id = complaint.citizen_id if complaint else None
+            from app.services.gamification_service import GamificationService
+            res = GamificationService(db).record_event(
+                user_id=current_user.id,
+                event_type="verified_other_report",
+                source_type="complaint",
+                source_id=str(c_id),
+                self_check_author_id=author_id,
+            )
+            points_earned = res.get("points", 0)
     elif action == "dispute":
         _COMMUNITY_VOTES[c_id]["disputes"] += 1
     elif action == "undo_confirm":
         _COMMUNITY_VOTES[c_id]["confirmations"] = max(_COMMUNITY_VOTES[c_id]["confirmations"] - 1, 0)
+        if current_user:
+            from app.services.gamification_service import GamificationService
+            GamificationService(db).reverse_points(
+                user_id=current_user.id,
+                reason="verified_other_report",
+                source_type="complaint",
+                source_id=str(c_id),
+            )
 
     return {
         "success": True,
         "confirmations": _COMMUNITY_VOTES[c_id]["confirmations"],
         "disputes": _COMMUNITY_VOTES[c_id]["disputes"],
-        "confirmations_needed": max(3 - _COMMUNITY_VOTES[c_id]["confirmations"], 0)
+        "confirmations_needed": max(3 - _COMMUNITY_VOTES[c_id]["confirmations"], 0),
+        "points_earned": points_earned,
     }
 
 

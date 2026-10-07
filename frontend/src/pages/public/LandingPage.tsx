@@ -170,7 +170,7 @@ export const LandingPage: React.FC = () => {
           resolution_rate_pct: data.resolution_rate_pct || 1.0,
         });
       })
-      .catch(() => {});
+      .catch(() => { });
   }, []);
 
   const handleTrackSubmit = async (e?: React.FormEvent) => {
@@ -470,11 +470,10 @@ export const LandingPage: React.FC = () => {
                 <div key={idx} className="relative z-10 flex flex-col space-y-2.5">
                   <div className="flex items-center gap-2">
                     <div
-                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all ${
-                        step.done
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full border-2 text-xs font-bold transition-all ${step.done
                           ? step.color
                           : 'border-stone-300 bg-white text-stone-400 dark:border-stone-700 dark:bg-stone-900'
-                      }`}
+                        }`}
                     >
                       {step.done ? idx + 1 : idx + 1}
                     </div>
@@ -702,7 +701,7 @@ export const LandingPage: React.FC = () => {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-12">
           {/* Top Telemetry Strip */}
           <div className="flex flex-wrap items-center justify-center gap-x-6 gap-y-2 text-xs font-semibold text-stone-500 dark:text-stone-400 uppercase tracking-wider text-center">
-            <span className="text-[#800000] dark:text-rose-400 font-bold">POWERING EVERY REPORT:</span>
+            {/* <span className="text-[#800000] dark:text-rose-400 font-bold">POWERING EVERY REPORT:</span>
             <span>45 departments</span>
             <span>·</span>
             <span>38 districts</span>
@@ -713,7 +712,7 @@ export const LandingPage: React.FC = () => {
             <span>·</span>
             <span>50+ schemes</span>
             <span>·</span>
-            <span>75 heritage sites</span>
+            <span>75 heritage sites</span> */}
           </div>
 
           {/* Section Heading */}

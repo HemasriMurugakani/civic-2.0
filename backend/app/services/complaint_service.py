@@ -133,6 +133,18 @@ class ComplaintService:
             recipient_contact=citizen.mobile,
         )
 
+        # Gamification: Award points to citizen for report_submitted
+        try:
+            from app.services.gamification_service import GamificationService
+            GamificationService(self.db).record_event(
+                user_id=citizen.id,
+                event_type="report_submitted",
+                source_type="complaint",
+                source_id=str(complaint.id),
+            )
+        except Exception:
+            pass
+
         # Auto-assignment flow: find officer in department & ward with fewest open complaints
         best_officer_id = self.complaint_repo.find_best_officer_for_assignment(
             department_id=category.department_id,
@@ -301,6 +313,18 @@ class ComplaintService:
                 recipient_contact=complaint.citizen.mobile if complaint.citizen else None,
             )
         elif new_status == ComplaintStatus.CITIZEN_VERIFIED:
+            # Gamification: award points for fix_confirmed
+            try:
+                from app.services.gamification_service import GamificationService
+                GamificationService(self.db).record_event(
+                    user_id=complaint.citizen_id,
+                    event_type="fix_confirmed",
+                    source_type="complaint",
+                    source_id=str(complaint.id),
+                )
+            except Exception:
+                pass
+
             # Notify officer and admin
             for assignment in complaint.assignments:
                 if assignment.is_active:
