@@ -3,7 +3,7 @@ from datetime import datetime
 from typing import Optional, List
 from sqlalchemy import (
     Column, Integer, String, Text, Float, Boolean, DateTime,
-    ForeignKey, Enum as SQLEnum, Index, UniqueConstraint
+    ForeignKey, Enum as SQLEnum, Index, UniqueConstraint, JSON
 )
 from sqlalchemy.orm import relationship
 from app.core.database import Base
@@ -60,6 +60,18 @@ class ProjectStatus(str, enum.Enum):
 class ProjectSource(str, enum.Enum):
     LOCAL_TRACKING = "local_tracking"
     GOVERNMENT_DATA = "government_data"
+
+
+class ModuleDifficulty(str, enum.Enum):
+    BEGINNER = "beginner"
+    INTERMEDIATE = "intermediate"
+    ADVANCED = "advanced"
+
+
+class ModuleProgressStatus(str, enum.Enum):
+    NOT_STARTED = "not_started"
+    IN_PROGRESS = "in_progress"
+    COMPLETED = "completed"
 
 
 class Department(Base):
@@ -119,6 +131,8 @@ class User(Base):
     notifications = relationship("Notification", back_populates="user", cascade="all, delete-orphan")
     points_entries = relationship("PointsLedger", back_populates="user", cascade="all, delete-orphan")
     badges = relationship("UserBadge", back_populates="user", cascade="all, delete-orphan")
+    module_progress = relationship("UserModuleProgress", back_populates="user", cascade="all, delete-orphan")
+    certificates = relationship("Certificate", back_populates="user", cascade="all, delete-orphan")
 
 
 class ComplaintCategory(Base):
@@ -728,4 +742,96 @@ class ModerationAuditLog(Base):
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
 
     actor = relationship("User")
+
+
+class LearningModule(Base):
+    __tablename__ = "learning_modules"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(100), unique=True, index=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    summary = Column(Text, nullable=False)
+    difficulty = Column(SQLEnum(ModuleDifficulty), default=ModuleDifficulty.BEGINNER, nullable=False)
+    duration_minutes = Column(Integer, default=20, nullable=False)
+    points = Column(Integer, default=50, nullable=False)
+    bonus_points = Column(Integer, default=25, nullable=False)
+    display_order = Column(Integer, default=0, nullable=False)
+    language = Column(String(10), default="en", nullable=False)
+    is_published = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    lessons = relationship("ModuleLesson", back_populates="module", cascade="all, delete-orphan", order_by="ModuleLesson.display_order")
+    quiz_questions = relationship("QuizQuestion", back_populates="module", cascade="all, delete-orphan", order_by="QuizQuestion.display_order")
+    progress_records = relationship("UserModuleProgress", back_populates="module", cascade="all, delete-orphan")
+    certificates = relationship("Certificate", back_populates="module")
+
+
+class ModuleLesson(Base):
+    __tablename__ = "module_lessons"
+
+    id = Column(Integer, primary_key=True, index=True)
+    module_id = Column(Integer, ForeignKey("learning_modules.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    display_order = Column(Integer, default=1, nullable=False)
+    content_markdown = Column(Text, nullable=False)
+    video_url = Column(String(500), nullable=True)
+    duration_minutes = Column(Integer, default=5, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    module = relationship("LearningModule", back_populates="lessons")
+
+
+class QuizQuestion(Base):
+    __tablename__ = "quiz_questions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    module_id = Column(Integer, ForeignKey("learning_modules.id", ondelete="CASCADE"), nullable=False, index=True)
+    question = Column(Text, nullable=False)
+    options = Column(JSON, nullable=False)  # list of strings: ["Option A", "Option B", ...]
+    correct_option_index = Column(Integer, nullable=False)  # 0-indexed
+    explanation = Column(Text, nullable=False)
+    display_order = Column(Integer, default=1, nullable=False)
+
+    module = relationship("LearningModule", back_populates="quiz_questions")
+
+
+class UserModuleProgress(Base):
+    __tablename__ = "user_module_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    module_id = Column(Integer, ForeignKey("learning_modules.id", ondelete="CASCADE"), nullable=False, index=True)
+    status = Column(SQLEnum(ModuleProgressStatus), default=ModuleProgressStatus.NOT_STARTED, nullable=False)
+    current_lesson_order = Column(Integer, default=1, nullable=False)
+    completed_lesson_ids = Column(JSON, default=list, nullable=False)
+    score = Column(Float, default=0.0, nullable=False)
+    passed = Column(Boolean, default=False, nullable=False)
+    attempts_count = Column(Integer, default=0, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint('user_id', 'module_id', name='uq_user_module_progress'),
+    )
+
+    user = relationship("User", back_populates="module_progress")
+    module = relationship("LearningModule", back_populates="progress_records")
+
+
+class Certificate(Base):
+    __tablename__ = "certificates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    module_id = Column(Integer, ForeignKey("learning_modules.id", ondelete="SET NULL"), nullable=True, index=True)
+    certificate_code = Column(String(50), unique=True, index=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    score = Column(Float, default=100.0, nullable=False)
+    issued_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    user = relationship("User", back_populates="certificates")
+    module = relationship("LearningModule", back_populates="certificates")
+
 

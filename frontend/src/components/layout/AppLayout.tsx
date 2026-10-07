@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, PlusCircle, Search, Kanban, BarChart3,
   Map, Database, Palette, LogOut, Menu, X, Shield, Trophy,
-  ChevronLeft, ChevronRight, User as UserIcon, Landmark, Users
+  ChevronLeft, ChevronRight, User as UserIcon, Landmark, Users, GraduationCap
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LanguageToggle, ThemeToggle, NotificationBell } from '../common/CommonUi';
@@ -28,6 +28,9 @@ export const AppLayout: React.FC = () => {
     location.pathname.startsWith('/projects/') ||
     location.pathname === '/community' ||
     location.pathname.startsWith('/community/') ||
+    location.pathname === '/education' ||
+    location.pathname.startsWith('/education/') ||
+    location.pathname.startsWith('/verify/') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/track';
@@ -49,6 +52,7 @@ export const AppLayout: React.FC = () => {
         { path: '/issues', label: 'Issues board & map', icon: Search },
         { path: '/projects', label: 'Projects Tracker', icon: Landmark },
         { path: '/community', label: 'Community Hub', icon: Users },
+        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
         { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
       );
     } else if (role === 'officer') {
@@ -57,6 +61,7 @@ export const AppLayout: React.FC = () => {
         { path: '/issues', label: 'Issues board & map', icon: Search },
         { path: '/projects', label: 'Projects Tracker', icon: Landmark },
         { path: '/community', label: 'Community Hub', icon: Users },
+        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
       );
     } else if (role === 'dept_admin') {
       links.push(
@@ -64,6 +69,7 @@ export const AppLayout: React.FC = () => {
         { path: '/officer', label: 'Workbench', icon: Kanban },
         { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
         { path: '/community', label: 'Community Hub', icon: Users },
+        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
         { path: '/issues', label: 'Issues board & map', icon: Search },
       );
     } else if (role === 'gov_admin') {
@@ -72,6 +78,7 @@ export const AppLayout: React.FC = () => {
         { path: '/gis', label: t('nav.gisMap'), icon: Map },
         { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
         { path: '/community', label: 'Community Hub', icon: Users },
+        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
         { path: '/admin', label: t('nav.adminCrud'), icon: Database },
         { path: '/officer', label: 'Workbench', icon: Kanban },
         { path: '/issues', label: 'Issues board & map', icon: Search },

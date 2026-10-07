@@ -25,7 +25,9 @@ from app.models.entities import (
     Group, GroupMembership, GroupPost, GroupPostComment,
     DiscussionThread, DiscussionReply, ThreadUpvote, ReplyUpvote, ThreadFollower,
     CitizenConnection, ContentFlag, ModerationAuditLog,
-    GroupVisibility, GroupMemberRole, FlagStatus, ConnectionStatus
+    GroupVisibility, GroupMemberRole, FlagStatus, ConnectionStatus,
+    LearningModule, ModuleLesson, QuizQuestion, UserModuleProgress, Certificate,
+    ModuleDifficulty, ModuleProgressStatus
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -762,6 +764,508 @@ def seed_community(db: Session):
     print("✅ Successfully seeded Community Hub: 4 groups, 5 threads, replies, and citizen connections!")
 
 
+def seed_education(db: Session):
+    print("📚 Seeding Civic Education & Knowledge Hub (Milestone F4)...")
+    now = datetime.utcnow()
+
+    # Check if modules already exist
+    existing = db.query(LearningModule).first()
+    if existing:
+        print("ℹ️  Learning modules already exist. Skipping creation.")
+        return
+
+    modules_data = [
+        {
+            "slug": "understanding-municipal-budgets",
+            "title": "Understanding Municipal Budgets",
+            "summary": "Comprehensive guide to how urban local bodies like the Greater Chennai Corporation (GCC) raise revenue, allocate ward funds, and execute capital civic works.",
+            "difficulty": ModuleDifficulty.INTERMEDIATE,
+            "duration_minutes": 25,
+            "points": 50,
+            "bonus_points": 25,
+            "display_order": 1,
+            "language": "en",
+            "lessons": [
+                {
+                    "title": "Introduction to Urban Local Body Finances",
+                    "display_order": 1,
+                    "duration_minutes": 8,
+                    "content_markdown": """### Revenue Streams of Urban Local Bodies (ULBs)
+
+Urban local bodies in Tamil Nadu, such as the Greater Chennai Corporation (GCC) and Municipalities across the state, manage their operations through two primary financial streams:
+
+1. **Revenue Account (Operating Expenditure)**: Funded by regular local taxes, fees, and state devolution. This covers sanitation workers' payroll, electricity for streetlights, routine road patching, and public health initiatives.
+2. **Capital Account (Asset Creation)**: Financed by capital grants, special state projects (e.g., Singara Chennai 2.0), multilateral loans (World Bank / ADB for stormwater drains), and municipal bonds.
+
+#### Own Revenue Sources
+- **Property Tax**: The cornerstone of municipal self-sufficiency. Calculated on annual rental value and plinth area across residential, commercial, and industrial classes.
+- **Professional Tax**: Collected from salaried employees and registered business professionals operating within municipal limits.
+- **Trade Licenses & Building Plan Approvals**: Administrative regulatory charges for commercial enterprise compliance and structural safety."""
+                },
+                {
+                    "title": "Ward-Level Budget Allocation & Fund Flow",
+                    "display_order": 2,
+                    "duration_minutes": 9,
+                    "content_markdown": """### How Money Flows to Your Neighborhood
+
+Each of the 200 Wards in Chennai and wards across Tamil Nadu municipalities receive targeted funds under multiple heads:
+
+- **Councillor Ward Development Scheme (CWDS)**: Discretionary funds allocated per councillor to sanction immediate local interventions such as installing LED streetlights, paving interior lanes, improving anganwadis, and installing public water kiosks.
+- **Road Restoration Charges (RRC)**: Levied on utilities (TANGEDCO, CMWSSB, private internet providers) when digging roads for laying cables or pipes. These funds are legally ring-fenced to restore the road surface promptly.
+- **Solid Waste Management Surcharge**: Devolved to support micro-composting centres (MCC), battery-operated vehicles (BOV), and door-to-door segregated waste collection."""
+                },
+                {
+                    "title": "Citizen Budget Oversight & Social Audits",
+                    "display_order": 3,
+                    "duration_minutes": 8,
+                    "content_markdown": """### How to Track and Audit Municipal Spending
+
+Citizens hold a democratic right to verify how public revenue is converted into civic infrastructure:
+
+1. **Annual Corporation Budget Presentation**: GCC convenes the elected council in February/March each year at the Ripon Building to debate and vote on the budget. The documents are published on `chennaicorporation.gov.in`.
+2. **Tamil Nadu e-Procurement Portal (`tntenders.gov.in`)**: Every civic work exceeding statutory threshold limits is tendered transparently with technical specifications and estimated bill of quantities.
+3. **Measurement Books (MB) & Social Audits**: During Area Sabha meetings, citizens can request verification of the Measurement Book records for completed road paving or drain construction in their street."""
+                }
+            ],
+            "quizzes": [
+                {
+                    "question": "Which of the following forms the primary Own-Source Revenue for the Greater Chennai Corporation?",
+                    "options": ["State Lottery proceeds", "Property Tax and Professional Tax", "Customs duty import tariffs", "Direct personal income tax"],
+                    "correct_option_index": 1,
+                    "explanation": "Property Tax and Professional Tax are the primary self-generated local revenues collected directly by urban local bodies in Tamil Nadu.",
+                    "display_order": 1,
+                },
+                {
+                    "question": "Under the Tamil Nadu Urban Local Bodies framework, what is the role of Road Restoration Charges (RRC)?",
+                    "options": ["Subsidizing vehicle fuel prices", "Rebuilding road surfaces damaged by utility excavations (water, power, cables)", "Funding inter-city highway toll booths", "Paying traffic police fines"],
+                    "correct_option_index": 1,
+                    "explanation": "Road Restoration Charges are paid by agencies when digging roads, and must be used specifically to repave and restore the road surface.",
+                    "display_order": 2,
+                },
+                {
+                    "question": "Where can Tamil Nadu citizens review official civic contract tenders and work estimates?",
+                    "options": ["Social media influencers only", "Official e-Procurement Portal (tntenders.gov.in)", "Private contractor brochures only", "All civic expenditure is confidential"],
+                    "correct_option_index": 1,
+                    "explanation": "tntenders.gov.in is Tamil Nadu's official open platform where municipal departments publish public tender notifications, estimates, and award notices.",
+                    "display_order": 3,
+                }
+            ]
+        },
+        {
+            "slug": "right-to-information-rti",
+            "title": "Right to Information (RTI)",
+            "summary": "Master the legal framework of the RTI Act 2005 in Tamil Nadu: drafting effective 6(1) requests, fee stamp exemptions, and appellate escalation.",
+            "difficulty": ModuleDifficulty.BEGINNER,
+            "duration_minutes": 20,
+            "points": 50,
+            "bonus_points": 25,
+            "display_order": 2,
+            "language": "en",
+            "lessons": [
+                {
+                    "title": "Basics of the RTI Act 2005 in Tamil Nadu",
+                    "display_order": 1,
+                    "duration_minutes": 6,
+                    "content_markdown": """### Democracy Through Transparency
+
+The Right to Information (RTI) Act 2005 empowers every Indian citizen to secure access to information under the control of public authorities to promote accountability:
+
+- **Public Authority**: Any body constituted by or under the Constitution, state law, or substantially financed by government funds (including GCC, CMWSSB, TANGEDCO).
+- **Public Information Officer (PIO)**: Designated nodal officers in every government department responsible for receiving and processing petitions.
+- **Section 4 Proactive Disclosures**: Government bodies are legally mandated to publish directory of officers, budgets, subsidies, and standard operating procedures voluntarily."""
+                },
+                {
+                    "title": "Drafting Bulletproof Section 6(1) Petitions",
+                    "display_order": 2,
+                    "duration_minutes": 7,
+                    "content_markdown": """### How to Write a Winning RTI Query
+
+A common mistake is asking speculative 'Why' questions. RTI covers **records in material form**:
+
+- **DO ASK**: "Please provide certified copies of the contractor's final Measurement Book and quality test reports for the bitumen laid on Gandhi Road in March 2024."
+- **DO NOT ASK**: "Why is this road so bumpy and poor quality?" (Officers can reject queries asking for opinions or justification).
+
+#### Application Fee in Tamil Nadu
+- Fee is Rs. 10 payable via Court Fee Stamp (affixed to physical paper), Demand Draft, Postal Order, or online payment via `onlinerti.tn.gov.in`.
+- Citizens Below Poverty Line (BPL) are completely exempt from application and copying fees upon producing ration card proof."""
+                },
+                {
+                    "title": "Statutory Timelines & Appeals in Tamil Nadu",
+                    "display_order": 3,
+                    "duration_minutes": 7,
+                    "content_markdown": """### Statutory Timelines and Appellate Remedies
+
+- **Standard Response Window**: 30 days from receipt of application.
+- **Life or Liberty Clause**: 48 hours if information concerns personal liberty.
+- **First Appeal (Section 19(1))**: If the PIO does not respond or gives unsatisfactory information within 30 days, file First Appeal to the designated First Appellate Authority (FAA) within 30 days. No court fee is required in Tamil Nadu for First Appeals.
+- **Second Appeal (Section 19(3))**: Filed before the **Tamil Nadu Information Commission (TNIC)** located at Block 19, Government Farm Village, Teynampet, Chennai. TNIC can penalize delinquent PIOs up to Rs. 25,000 under Section 20."""
+                }
+            ],
+            "quizzes": [
+                {
+                    "question": "What is the standard legal timeline for a Public Information Officer (PIO) to respond to an RTI application?",
+                    "options": ["7 days", "15 days", "30 days", "90 days"],
+                    "correct_option_index": 2,
+                    "explanation": "Section 7(1) of the RTI Act 2005 provides a statutory period of 30 days for responding to an applicant.",
+                    "display_order": 1,
+                },
+                {
+                    "question": "If information sought directly concerns the life or liberty of a citizen, what is the mandatory response deadline?",
+                    "options": ["12 hours", "48 hours", "5 days", "7 days"],
+                    "correct_option_index": 1,
+                    "explanation": "Section 7(1) mandates that information concerning the life or liberty of a person must be provided within forty-eight hours of receipt.",
+                    "display_order": 2,
+                },
+                {
+                    "question": "What is the most effective approach when requesting records regarding civic road construction quality?",
+                    "options": ["Ask the engineer why the road cracked", "Request certified copies of the Measurement Book, contractor bills, and bituminous material test reports", "Demand personal opinions from the local ward councillor", "Ask the department to predict future rain damage"],
+                    "correct_option_index": 1,
+                    "explanation": "RTI entitles citizens to existing tangible records. Asking for Measurement Books and lab test certificates provides factual, legally binding proof.",
+                    "display_order": 3,
+                }
+            ]
+        },
+        {
+            "slug": "effective-grievance-redressal",
+            "title": "Effective Grievance Redressal",
+            "summary": "How to draft, submit, track, and escalate civic complaints across CM Helpline 1100, Namma Chennai, and AI-GovInsight for maximum accountability.",
+            "difficulty": ModuleDifficulty.BEGINNER,
+            "duration_minutes": 15,
+            "points": 50,
+            "bonus_points": 25,
+            "display_order": 3,
+            "language": "en",
+            "lessons": [
+                {
+                    "title": "Anatomy of an Actionable Grievance",
+                    "display_order": 1,
+                    "duration_minutes": 5,
+                    "content_markdown": """### Precision Leads to Prompt Resolution
+
+Field engineers handle hundreds of tickets daily. Petitions with ambiguous locations or vague descriptions languish. High-resolution actionable reporting requires:
+
+1. **Exact Geo-Location**: Street name, nearest landmark (e.g., 'Opposite Corporation Park Gate 2'), and GPS coordinates.
+2. **Clear Category Tagging**: Distinguish between sanitary waste accumulation vs. construction debris, or streetlight lamp failure vs. underground cable fault.
+3. **Objective Photo Evidence**: Wide shot showing the surrounding street landmark, and a close-up shot capturing the depth or severity of the defect."""
+                },
+                {
+                    "title": "Tamil Nadu Statutory Grievance Channels",
+                    "display_order": 2,
+                    "duration_minutes": 5,
+                    "content_markdown": """### Integrated Public Grievance Portals in Tamil Nadu
+
+Tamil Nadu operates robust citizen-facing grievance conduits:
+
+- **CM Helpline 1100 (IIPGRS)**: The Chief Minister's Integrated and Inclusive Public Grievance Redressal System. Handles phone calls, web petitions, and petitions submitted during Collectors' grievance redressal days (Mondays).
+- **Greater Chennai Corporation 1913 Helpline**: 24x7 municipal complaint center routing calls directly to Zonal Assistant Engineers.
+- **AI-GovInsight Community Platform**: Provides transparent public tracking, SLA monitoring, and neighborhood community verification."""
+                },
+                {
+                    "title": "Citizen Feedback & Reopening Unfixed Issues",
+                    "display_order": 3,
+                    "duration_minutes": 5,
+                    "content_markdown": """### Closing the Loop with Citizen Verification
+
+Never let an unaddressed issue be marked closed prematurely:
+
+- **Resolution Evidence**: Under government guidelines, field officers must upload a photograph verifying the corrective work done.
+- **Citizen Verification Window**: In AI-GovInsight and CM Helpline, citizens receive an SMS/app prompt to verify if the issue was satisfactorily resolved.
+- **Reopening Mechanism**: If the defect was merely patched superficially or left untouched, click 'Reopen' with photo proof. Reopened petitions are auto-escalated to Zonal Executive Engineers."""
+                }
+            ],
+            "quizzes": [
+                {
+                    "question": "What is the official toll-free telephone number for the Chief Minister's Grievance Redressal Helpline in Tamil Nadu?",
+                    "options": ["100", "108", "1100", "1950"],
+                    "correct_option_index": 2,
+                    "explanation": "CM Helpline 1100 is the unified grievance redressal number connecting citizens to all government departments in Tamil Nadu.",
+                    "display_order": 1,
+                },
+                {
+                    "question": "Why is landmark-based geo-tagging crucial when lodging a civic complaint?",
+                    "options": ["It increases internet data usage", "It enables municipal field inspectors to pinpoint the defect immediately without phone tag", "It is only required for criminal complaints", "It prevents other citizens from viewing the ticket"],
+                    "correct_option_index": 1,
+                    "explanation": "Accurate GPS coordinates paired with physical street landmarks ensure field maintenance crews reach the correct location without delay.",
+                    "display_order": 2,
+                },
+                {
+                    "question": "If an officer marks your grievance as 'Resolved' but no physical work took place on the ground, what is the correct action?",
+                    "options": ["Surrender and file a fresh complaint after 6 months", "Use the portal's 'Reopen' feature with photo evidence to trigger senior managerial escalation", "Abandon the issue", "Post unrelated complaints in other categories"],
+                    "correct_option_index": 1,
+                    "explanation": "Reopening a complaint with fresh photographic proof triggers an automatic escalation up the administrative hierarchy.",
+                    "display_order": 3,
+                }
+            ]
+        },
+        {
+            "slug": "local-governance-structure",
+            "title": "Local Governance Structure",
+            "summary": "Deciphering the 74th Constitutional Amendment: Greater Chennai Corporation hierarchy, Zones, Wards, Standing Committees, and Area Sabhas.",
+            "difficulty": ModuleDifficulty.INTERMEDIATE,
+            "duration_minutes": 20,
+            "points": 50,
+            "bonus_points": 25,
+            "display_order": 4,
+            "language": "en",
+            "lessons": [
+                {
+                    "title": "The 74th Constitutional Amendment & Civic Mandates",
+                    "display_order": 1,
+                    "duration_minutes": 7,
+                    "content_markdown": """### Constitutional Basis of City Governance
+
+Enacted in 1992, the 74th Constitutional Amendment introduced Part IX-A to the Constitution of India, recognizing Urban Local Bodies (ULBs) as institutions of self-government:
+
+- **12th Schedule**: Lists 18 functional civic responsibilities transferred to municipalities, including urban planning, water supply, public health, solid waste management, fire services, and safeguarding the urban environment.
+- **Finance Commission**: Established mandatory State Finance Commissions to evaluate the financial health of municipalities every five years."""
+                },
+                {
+                    "title": "Greater Chennai Corporation (GCC) Architecture",
+                    "display_order": 2,
+                    "duration_minutes": 7,
+                    "content_markdown": """### Administrative vs. Political Executive
+
+The Greater Chennai Corporation is structured to balance political representation with administrative execution:
+
+- **Political Wing**: Led by the **Worshipful Mayor**, Deputy Mayor, and 200 elected **Ward Councillors** representing the citizens. They deliberate in Council meetings, formulate policies, and approve budget grants.
+- **Administrative Wing**: Headed by the **Commissioner** (senior IAS officer), supported by Deputy Commissioners, Regional Joint Commissioners (North, Central, South), and 15 Zonal Officers.
+- **15 Zones**: From Thiruvottiyur (Zone 1) in the North to Sholinganallur (Zone 15) in the South, grouping 200 Wards."""
+                },
+                {
+                    "title": "Standing Committees & Ward Committees",
+                    "display_order": 3,
+                    "duration_minutes": 6,
+                    "content_markdown": """### Decision-Making Bodies
+
+Council policies are vetted through specialized Standing Committees:
+1. **Taxation and Finance Standing Committee**
+2. **Works Standing Committee** (infrastructure, roads, bridges)
+3. **Public Health Standing Committee** (sanitation, clinics, vector control)
+4. **Town Planning Standing Committee**
+5. **Education Standing Committee** (Corporation schools)
+
+Additionally, Ward Committees represent cluster wards to review zonal work progress monthly."""
+                }
+            ],
+            "quizzes": [
+                {
+                    "question": "Which Constitutional Amendment Act granted constitutional recognition and powers to Urban Local Bodies in India?",
+                    "options": ["42nd Amendment Act", "73rd Amendment Act", "74th Amendment Act", "86th Amendment Act"],
+                    "correct_option_index": 2,
+                    "explanation": "The 74th Amendment Act 1992 granted constitutional status to Municipal Corporations, Municipalities, and Town Panchayats.",
+                    "display_order": 1,
+                },
+                {
+                    "question": "How many administrative Zones and Wards constitute the Greater Chennai Corporation?",
+                    "options": ["10 Zones, 150 Wards", "15 Zones, 200 Wards", "25 Zones, 300 Wards", "5 Zones, 50 Wards"],
+                    "correct_option_index": 1,
+                    "explanation": "GCC is comprised of 15 administrative Zones spanning 200 electoral Wards across North, Central, and South Chennai.",
+                    "display_order": 2,
+                },
+                {
+                    "question": "Who serves as the executive head in charge of municipal administration in a City Municipal Corporation in Tamil Nadu?",
+                    "options": ["The Ward Councillor", "The Municipal Commissioner (IAS)", "The Regional Transport Officer", "The District Sessions Judge"],
+                    "correct_option_index": 1,
+                    "explanation": "The Municipal Commissioner, an officer of the Indian Administrative Service, acts as the principal executive authority of the corporation.",
+                    "display_order": 3,
+                }
+            ]
+        },
+        {
+            "slug": "active-civic-participation",
+            "title": "Active Civic Participation",
+            "summary": "Beyond voting: participating in Grama Sabhas, Area Sabhas, participatory budgeting, public hearings, and civic volunteering.",
+            "difficulty": ModuleDifficulty.ADVANCED,
+            "duration_minutes": 30,
+            "points": 60,
+            "bonus_points": 30,
+            "display_order": 5,
+            "language": "en",
+            "lessons": [
+                {
+                    "title": "Area Sabhas & Ward Committees in Tamil Nadu",
+                    "display_order": 1,
+                    "duration_minutes": 10,
+                    "content_markdown": """### Direct Democracy at the Polling Booth Level
+
+Under the landmark Tamil Nadu Urban Local Bodies (Amendment) Act 2022, urban local governance introduced statutory **Area Sabhas**:
+
+- **What is an Area Sabha?**: A body consisting of all registered voters within a designated polling booth area (several Area Sabhas make up one Ward).
+- **Mandatory Meetings**: Held once every three months, presided over by the elected Ward Councillor or designated Area Sabha representative.
+- **Powers**: Suggest priority civic works for the street, identify beneficiaries for government welfare schemes, inspect ongoing works, and raise localized environmental grievances."""
+                },
+                {
+                    "title": "Walk-the-Ward & Neighborhood Civic Audits",
+                    "display_order": 2,
+                    "duration_minutes": 10,
+                    "content_markdown": """### Practical Toolkit for Neighborhood Activism
+
+A 'Walk-the-Ward' audit is a proactive civic methodology:
+
+1. **Pre-Walk Planning**: Form a group of 4-6 local residents. Print a map of your street network from OpenStreetMap.
+2. **Systematic Checklist**:
+   - *Streetlights*: Broken bulbs, missing covers, dangling wires.
+   - *Pavement / Footpaths*: Encroachments, broken slabs, wheelchair inaccessibility.
+   - *Stormwater Drains*: Silt chambers clogged with plastic, missing manhole covers.
+   - *Garbage Points*: Overflowing bins, dark dumping corners.
+3. **Evidence Dossier**: Compile photograph log with exact coordinates and present it during Area Sabha meetings and via AI-GovInsight."""
+                },
+                {
+                    "title": "Participatory Budgeting & Community Co-Governance",
+                    "display_order": 3,
+                    "duration_minutes": 10,
+                    "content_markdown": """### Co-Designing Your Neighborhood Future
+
+Civic participation extends far beyond filing complaints when things break:
+
+- **Participatory Budgeting**: Citizens collaboratively vote on how a designated portion of the local budget should be allocated (e.g., creating a neighborhood sensory park vs. installing solar streetlights).
+- **Resident Welfare Association (RWA) Coordination**: Partnering with local RWAs and youth clubs to conduct segregation-at-source drives, sapling plantation, and rainwater harvesting compliance checks before the Northeast Monsoon."""
+                }
+            ],
+            "quizzes": [
+                {
+                    "question": "What is an Area Sabha under Tamil Nadu's Urban Local Bodies framework?",
+                    "options": ["A private corporate board meeting", "A grassroots statutory assembly of all registered voters in a polling booth area", "A state assembly legislative committee", "A commercial trade union council"],
+                    "correct_option_index": 1,
+                    "explanation": "Area Sabhas provide a grassroots forum for all registered voters in a neighborhood to debate civic works and hold ward representatives directly accountable.",
+                    "display_order": 1,
+                },
+                {
+                    "question": "What is the primary objective of a citizen 'Walk-the-Ward' audit?",
+                    "options": ["Setting athletic distance records", "Methodically mapping and documenting neighborhood infrastructure defects and accessibility barriers", "Distributing political flyers", "Carrying out commercial vendor inspections"],
+                    "correct_option_index": 1,
+                    "explanation": "Walk-the-Ward audits empower local residents to systematically inspect footpaths, lighting, drains, and sanitation to generate evidence-based civic petitions.",
+                    "display_order": 2,
+                },
+                {
+                    "question": "Which civic practice gives citizens direct decision-making power over the allocation of public funds in their neighborhood?",
+                    "options": ["Participatory Budgeting", "Fiscal Austerity Policy", "Commercial Banking", "Private Equity Syndication"],
+                    "correct_option_index": 0,
+                    "explanation": "Participatory budgeting enables community members to propose, evaluate, and vote on public development projects funded by municipal revenue.",
+                    "display_order": 3,
+                }
+            ]
+        }
+    ]
+
+    for m_data in modules_data:
+        lessons_data = m_data.pop("lessons")
+        quizzes_data = m_data.pop("quizzes")
+
+        module = LearningModule(**m_data, is_published=True, created_at=now - timedelta(days=30))
+        db.add(module)
+        db.commit()
+        db.refresh(module)
+
+        for l_data in lessons_data:
+            lesson = ModuleLesson(module_id=module.id, **l_data, created_at=now - timedelta(days=30))
+            db.add(lesson)
+
+        for q_data in quizzes_data:
+            quiz = QuizQuestion(module_id=module.id, **q_data)
+            db.add(quiz)
+
+        db.commit()
+
+    print(f"✅ Created {len(modules_data)} comprehensive Civic Education Modules with lessons and quizzes!")
+
+    # Seed demo student progress for test citizens
+    citizens = db.query(User).filter(User.role == UserRole.CITIZEN).all()
+    if len(citizens) >= 3:
+        c1, c2, c3 = citizens[0], citizens[1], citizens[2]
+        m1 = db.query(LearningModule).filter(LearningModule.slug == "understanding-municipal-budgets").first()
+        m2 = db.query(LearningModule).filter(LearningModule.slug == "right-to-information-rti").first()
+        m3 = db.query(LearningModule).filter(LearningModule.slug == "effective-grievance-redressal").first()
+
+        if m1:
+            p1 = UserModuleProgress(
+                user_id=c1.id,
+                module_id=m1.id,
+                status=ModuleProgressStatus.COMPLETED,
+                current_lesson_order=999,
+                completed_lesson_ids=[l.id for l in m1.lessons],
+                score=100.0,
+                passed=True,
+                attempts_count=1,
+                completed_at=now - timedelta(days=5),
+            )
+            db.add(p1)
+            cert1 = Certificate(
+                user_id=c1.id,
+                module_id=m1.id,
+                certificate_code="TN-CIVIC-8F29A10B",
+                title=f"Civic Competence in {m1.title}",
+                score=100.0,
+                issued_at=now - timedelta(days=5),
+            )
+            db.add(cert1)
+            db.add(PointsLedger(
+                user_id=c1.id,
+                points=50,
+                reason="module_completion",
+                source_type="learning_module",
+                source_id=str(m1.id),
+                created_at=now - timedelta(days=5),
+            ))
+            db.add(PointsLedger(
+                user_id=c1.id,
+                points=25,
+                reason="module_perfect_score",
+                source_type="learning_module",
+                source_id=str(m1.id),
+                created_at=now - timedelta(days=5),
+            ))
+
+        if m2:
+            p2 = UserModuleProgress(
+                user_id=c2.id,
+                module_id=m2.id,
+                status=ModuleProgressStatus.COMPLETED,
+                current_lesson_order=999,
+                completed_lesson_ids=[l.id for l in m2.lessons],
+                score=85.0,
+                passed=True,
+                attempts_count=2,
+                completed_at=now - timedelta(days=3),
+            )
+            db.add(p2)
+            cert2 = Certificate(
+                user_id=c2.id,
+                module_id=m2.id,
+                certificate_code="TN-CIVIC-4D78E91C",
+                title=f"Civic Competence in {m2.title}",
+                score=85.0,
+                issued_at=now - timedelta(days=3),
+            )
+            db.add(cert2)
+            db.add(PointsLedger(
+                user_id=c2.id,
+                points=50,
+                reason="module_completion",
+                source_type="learning_module",
+                source_id=str(m2.id),
+                created_at=now - timedelta(days=3),
+            ))
+
+        if m3:
+            p3 = UserModuleProgress(
+                user_id=c3.id,
+                module_id=m3.id,
+                status=ModuleProgressStatus.IN_PROGRESS,
+                current_lesson_order=2,
+                completed_lesson_ids=[m3.lessons[0].id] if m3.lessons else [],
+                score=0.0,
+                passed=False,
+                attempts_count=0,
+                completed_at=None,
+            )
+            db.add(p3)
+
+        db.commit()
+        print("✅ Seeded demo learner progress and certificates for test citizens!")
+
+
+
 def seed_database(reset: bool = False):
     random.seed(42)
     db: Session = SessionLocal()
@@ -1335,6 +1839,9 @@ def seed_database(reset: bool = False):
 
     # 7. Seed Community Hub (Milestone F3)
     seed_community(db)
+
+    # 8. Seed Civic Education & Knowledge Hub (Milestone F4)
+    seed_education(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)

@@ -549,4 +549,132 @@ export interface ModerationAuditLogItem {
   created_at: string;
 }
 
+// Milestone F4: Civic Education & Knowledge Hub
+export type ModuleDifficulty = 'beginner' | 'intermediate' | 'advanced';
+export type ModuleProgressStatus = 'not_started' | 'in_progress' | 'completed';
+
+export interface LessonItem {
+  id: number;
+  module_id: number;
+  title: string;
+  display_order: number;
+  content_markdown: string;
+  video_url?: string;
+  duration_minutes: number;
+  created_at: string;
+}
+
+export interface QuizQuestionItem {
+  id: number;
+  module_id: number;
+  question: string;
+  options: string[];
+  display_order: number;
+}
+
+export interface LearningModuleItem {
+  id: number;
+  title: string;
+  slug: string;
+  summary: string;
+  difficulty: ModuleDifficulty;
+  duration_minutes: number;
+  points: number;
+  bonus_points: number;
+  display_order: number;
+  language: string;
+  is_published: boolean;
+  lessons_count: number;
+  quiz_questions_count: number;
+  user_status: ModuleProgressStatus;
+  user_progress_percent: number;
+  user_score: number;
+  passed: boolean;
+  completed_at?: string;
+  has_certificate: boolean;
+  certificate_code?: string;
+}
+
+export interface LearningModuleDetail extends LearningModuleItem {
+  lessons: LessonItem[];
+  quiz_questions: QuizQuestionItem[];
+  current_lesson_order: number;
+  completed_lesson_ids: number[];
+}
+
+export interface QuizReviewItem {
+  question_id: number;
+  selected_option_index?: number;
+  correct_option_index: number;
+  is_correct: boolean;
+  explanation: string;
+}
+
+export interface QuizSubmissionResult {
+  module_id: number;
+  score: number;
+  passed: boolean;
+  pass_mark: number;
+  total_questions: number;
+  correct_count: number;
+  points_awarded: number;
+  bonus_awarded: number;
+  is_first_completion: boolean;
+  certificate_code?: string;
+  question_reviews: QuizReviewItem[];
+}
+
+export interface CertificateItem {
+  id: number;
+  certificate_code: string;
+  title: string;
+  score: number;
+  issued_at: string;
+  user_id: number;
+  user_name: string;
+  module_id?: number;
+  module_slug?: string;
+  verify_url: string;
+}
+
+export interface PublicCertificateVerify {
+  valid: boolean;
+  certificate_code: string;
+  title: string;
+  recipient_name: string;
+  score: number;
+  issued_at: string;
+  module_title?: string;
+  status: string;
+}
+
+export interface LearningLeaderboardEntry {
+  rank: number;
+  user_id: number;
+  public_id: string;
+  display_name: string;
+  modules_completed: number;
+  total_learning_points: number;
+  certificates_count: number;
+  level: number;
+}
+
+export interface EducationAnalytics {
+  total_enrollments: number;
+  total_completions: number;
+  overall_completion_rate: number;
+  total_certificates_issued: number;
+  total_learning_points_awarded: number;
+  module_metrics: {
+    id: number;
+    title: string;
+    slug: string;
+    enrollments: number;
+    completions: number;
+    completion_rate: number;
+    avg_score: number;
+  }[];
+}
+
+
 

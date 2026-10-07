@@ -28,6 +28,9 @@ import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
 import { CommunityHubPage } from './pages/community/CommunityHubPage';
 import { GroupDetailPage } from './pages/community/GroupDetailPage';
 import { ThreadDetailPage } from './pages/community/ThreadDetailPage';
+import { EducationHubPage } from './pages/education/EducationHubPage';
+import { ModuleDetailPage } from './pages/education/ModuleDetailPage';
+import { CertificateVerifyPage } from './pages/education/CertificateVerifyPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -61,6 +64,9 @@ export function App() {
               <Route path="/community" element={<CommunityHubPage />} />
               <Route path="/community/groups/:id" element={<GroupDetailPage />} />
               <Route path="/community/threads/:id" element={<ThreadDetailPage />} />
+              <Route path="/education" element={<EducationHubPage />} />
+              <Route path="/education/modules/:slug" element={<ModuleDetailPage />} />
+              <Route path="/verify/:code" element={<CertificateVerifyPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

@@ -6,7 +6,9 @@ import {
   ProjectItem, ProjectDetail, ProjectUpdateItem, ProjectMapPoint, ProjectSyncResponse,
   GroupListItem, GroupDetail, GroupPostItem, GroupCommentItem,
   ThreadListItem, ThreadDetail, ThreadReplyItem, ConnectionItem,
-  ContentFlagItem, ModerationAuditLogItem
+  ContentFlagItem, ModerationAuditLogItem,
+  LearningModuleItem, LearningModuleDetail, QuizSubmissionResult, CertificateItem,
+  PublicCertificateVerify, LearningLeaderboardEntry, EducationAnalytics
 } from './types';
 
 const API_BASE = '/api/v1';
@@ -433,4 +435,48 @@ export const api = {
 
   getModerationAuditLogs: () =>
     request<ModerationAuditLogItem[]>('/community/audit-logs'),
+
+  // Milestone F4: Civic Education & Knowledge Hub
+  getEducationModules: (params?: { language?: string; difficulty?: string }) => {
+    const sp = new URLSearchParams();
+    if (params?.language) sp.set('language', params.language);
+    if (params?.difficulty) sp.set('difficulty', params.difficulty);
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    return request<LearningModuleItem[]>(`/education/modules${qs}`);
+  },
+
+  getEducationModule: (identifier: string | number) =>
+    request<LearningModuleDetail>(`/education/modules/${encodeURIComponent(String(identifier))}`),
+
+  completeLesson: (moduleId: number, lessonId: number) =>
+    request<{
+      success: boolean;
+      progress_percent: number;
+      current_lesson_order: number;
+      completed_lesson_ids: number[];
+    }>(`/education/modules/${encodeURIComponent(String(moduleId))}/lessons/complete`, {
+      method: 'POST',
+      body: JSON.stringify({ lesson_id: lessonId }),
+    }),
+
+  submitQuiz: (moduleId: number, answers: Record<string | number, number>) =>
+    request<QuizSubmissionResult>(`/education/modules/${encodeURIComponent(String(moduleId))}/quiz/submit`, {
+      method: 'POST',
+      body: JSON.stringify({ answers }),
+    }),
+
+  getMyCertificates: () =>
+    request<CertificateItem[]>('/education/certificates/me'),
+
+  getCertificatePdfUrl: (code: string) =>
+    `/api/v1/education/certificates/${encodeURIComponent(code)}/pdf`,
+
+  verifyCertificate: (code: string) =>
+    request<PublicCertificateVerify>(`/education/verify/${encodeURIComponent(code)}`),
+
+  getLearningLeaderboard: (limit = 25) =>
+    request<LearningLeaderboardEntry[]>(`/education/leaderboard?limit=${limit}`),
+
+  getEducationAnalytics: () =>
+    request<EducationAnalytics>('/education/analytics'),
 };

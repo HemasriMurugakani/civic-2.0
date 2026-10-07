@@ -3,7 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Megaphone, MapPin, Compass, Landmark, Flag,
   BarChart3, Factory, Users, HeartPulse, Shield,
-  Droplets, Route, LogIn, LogOut, Globe, Monitor, Sun, MessageSquare, Trophy
+  Droplets, Route, LogIn, LogOut, Globe, Monitor, Sun, MessageSquare, Trophy, GraduationCap
 } from 'lucide-react';
 import { NammaLogo } from '../common/NammaLogo';
 import { useAuth } from '@/lib/auth';
@@ -36,6 +36,7 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
     { path: '/issues', label: 'Issues board & map', icon: MessageSquare },
     { path: '/projects', label: 'Projects Tracker', icon: Landmark },
     { path: '/community', label: 'Community Hub', icon: Users },
+    { path: '/education', label: 'Civic Academy', icon: GraduationCap },
     { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
   ];
 
