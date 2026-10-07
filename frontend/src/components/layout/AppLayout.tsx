@@ -4,7 +4,7 @@ import { useTranslation } from 'react-i18next';
 import {
   LayoutDashboard, PlusCircle, Search, Kanban, BarChart3,
   Map, Database, Palette, LogOut, Menu, X, Shield, Trophy,
-  ChevronLeft, ChevronRight, User as UserIcon
+  ChevronLeft, ChevronRight, User as UserIcon, Landmark
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LanguageToggle, ThemeToggle, NotificationBell } from '../common/CommonUi';
@@ -24,6 +24,8 @@ export const AppLayout: React.FC = () => {
     location.pathname === '/report' ||
     location.pathname === '/issues' ||
     location.pathname.startsWith('/issues/') ||
+    location.pathname === '/projects' ||
+    location.pathname.startsWith('/projects/') ||
     location.pathname === '/login' ||
     location.pathname === '/register' ||
     location.pathname === '/track';
@@ -43,23 +45,27 @@ export const AppLayout: React.FC = () => {
         { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
         { path: '/report', label: t('nav.fileComplaint'), icon: PlusCircle },
         { path: '/issues', label: 'Issues board & map', icon: Search },
+        { path: '/projects', label: 'Projects Tracker', icon: Landmark },
         { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
       );
     } else if (role === 'officer') {
       links.push(
         { path: '/officer', label: t('nav.kanban'), icon: Kanban },
         { path: '/issues', label: 'Issues board & map', icon: Search },
+        { path: '/projects', label: 'Projects Tracker', icon: Landmark },
       );
     } else if (role === 'dept_admin') {
       links.push(
         { path: '/department', label: 'Department KPIs', icon: BarChart3 },
         { path: '/officer', label: 'Workbench', icon: Kanban },
+        { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
         { path: '/issues', label: 'Issues board & map', icon: Search },
       );
     } else if (role === 'gov_admin') {
       links.push(
         { path: '/governance', label: t('nav.governance'), icon: BarChart3 },
         { path: '/gis', label: t('nav.gisMap'), icon: Map },
+        { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
         { path: '/admin', label: t('nav.adminCrud'), icon: Database },
         { path: '/officer', label: 'Workbench', icon: Kanban },
         { path: '/issues', label: 'Issues board & map', icon: Search },
@@ -105,6 +111,12 @@ export const AppLayout: React.FC = () => {
                   className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
                 >
                   Track
+                </Link>
+                <Link
+                  to="/projects"
+                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                >
+                  Projects
                 </Link>
                 <Link
                   to="/governance"

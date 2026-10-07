@@ -1,0 +1,309 @@
+import {
+  AuthTokens, User, ComplaintItem, ComplaintDetail, PublicTrackData, PublicStats,
+  KPIData, WardHotspot, OfficerWorkload, DailyTrend, DepartmentLeaderboard,
+  Department, Ward, Category, NotificationItem,
+  GamificationProgress, LeaderboardData, UserPublicProfile, BadgeCatalogItem,
+  ProjectItem, ProjectDetail, ProjectUpdateItem, ProjectMapPoint, ProjectSyncResponse
+} from './types';
+
+const API_BASE = '/api/v1';
+
+export class ApiError extends Error {
+  status: number;
+  data: any;
+
+  constructor(message: string, status: number, data?: any) {
+    super(message);
+    this.status = status;
+    this.data = data;
+  }
+}
+
+async function request<T>(endpoint: string, options: RequestInit = {}): Promise<T> {
+  const token = localStorage.getItem('access_token');
+  const headers: Record<string, string> = {
+    ...(options.headers as Record<string, string>),
+  };
+
+  if (token) {
+    headers['Authorization'] = `Bearer ${token}`;
+  }
+
+  if (!(options.body instanceof FormData)) {
+    headers['Content-Type'] = 'application/json';
+  }
+
+  const response = await fetch(`${API_BASE}${endpoint}`, {
+    ...options,
+    headers,
+  });
+
+  if (!response.ok) {
+    let errorDetail = 'An unexpected error occurred';
+    try {
+      const errJson = await response.json();
+      errorDetail = errJson.detail || errJson.message || errorDetail;
+    } catch {
+      errorDetail = response.statusText || errorDetail;
+    }
+    throw new ApiError(errorDetail, response.status);
+  }
+
+  return response.json();
+}
+
+export const api = {
+  // Auth
+  login: (credentials: { username: string; password: string }) =>
+    request<AuthTokens>('/auth/login', {
+      method: 'POST',
+      body: JSON.stringify(credentials),
+    }),
+
+  register: (payload: any) =>
+    request<AuthTokens>('/auth/register', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getMe: () => request<User>('/auth/me'),
+
+  // Public
+  getPublicStats: () => request<PublicStats>('/public/stats'),
+
+  getPublicMasterData: () =>
+    request<{ departments: Department[]; wards: Ward[]; categories: Category[] }>('/public/master-data'),
+
+  trackComplaint: (referenceNo: string) =>
+    request<PublicTrackData>(`/public/track/${encodeURIComponent(referenceNo)}`),
+
+  getPublicIssues: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        query.append(k, String(v));
+      }
+    });
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<any>(`/public/issues${qs}`);
+  },
+
+  getPublicIssueDetail: (id: string | number) =>
+    request<any>(`/public/issues/${encodeURIComponent(String(id))}`),
+
+  verifyPublicIssue: (id: string | number, action: string = 'confirm') =>
+    request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ action }),
+    }),
+
+  createPublicIssue: (payload: any) =>
+    request<any>('/public/issues', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  // Complaints
+  getComplaints: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        query.append(k, String(v));
+      }
+    });
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<ComplaintItem[]>(`/complaints${qs}`);
+  },
+
+  getComplaintDetail: (id: number) => request<ComplaintDetail>(`/complaints/${id}`),
+
+  createComplaint: (payload: any) =>
+    request<ComplaintItem>('/complaints', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateStatus: (id: number, payload: { status: string; note?: string }) =>
+    request<ComplaintItem>(`/complaints/${id}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(payload),
+    }),
+
+  reassignComplaint: (id: number, officerId: number, note?: string) =>
+    request<ComplaintItem>(`/complaints/${id}/reassign`, {
+      method: 'POST',
+      body: JSON.stringify({ officer_id: officerId, note }),
+    }),
+
+  reopenComplaint: (id: number, reason: string) =>
+    request<ComplaintItem>(`/complaints/${id}/reopen`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  escalateComplaint: (referenceNo: string, reason?: string) =>
+    request<ComplaintItem>(`/complaints/${encodeURIComponent(referenceNo)}/escalate`, {
+      method: 'POST',
+      body: JSON.stringify({ reason }),
+    }),
+
+  addComment: (id: number, comment: string, isInternal: boolean = false) =>
+    request<any>(`/complaints/${id}/comments`, {
+      method: 'POST',
+      body: JSON.stringify({ comment, is_internal: isInternal }),
+    }),
+
+  uploadEvidence: (id: number, file: File, evidenceType: string = 'citizen') => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('evidence_type', evidenceType);
+    return request<any>(`/complaints/${id}/evidence`, {
+      method: 'POST',
+      body: formData,
+    });
+  },
+
+  submitFeedback: (id: number, payload: { rating: number; comment?: string; confirmed_resolved: boolean }) =>
+    request<any>(`/complaints/${id}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getAiInsights: (id: number) => request<any>(`/complaints/${id}/ai-insights`),
+  getSimilarComplaints: (id: number) => request<any>(`/complaints/${id}/similar`),
+
+  // Analytics
+  getKpi: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams(params).toString();
+    return request<KPIData>(`/analytics/kpi${query ? `?${query}` : ''}`);
+  },
+
+  getCategoriesAnalytics: (days: number = 30) =>
+    request<any[]>(`/analytics/categories?days=${days}`),
+
+  getWardHotspots: (days: number = 60) =>
+    request<WardHotspot[]>(`/analytics/wards?days=${days}`),
+
+  getOfficerWorkloads: () => request<OfficerWorkload[]>('/analytics/officers'),
+
+  getDailyTrends: (days: number = 14) => request<DailyTrend[]>(`/analytics/trends?days=${days}`),
+
+  getLeaderboard: () => request<DepartmentLeaderboard[]>('/analytics/leaderboard'),
+
+  // Master Data
+  getDepartments: () => request<Department[]>('/master/departments'),
+  getWards: () => request<Ward[]>('/master/wards'),
+  getCategories: () => request<Category[]>('/master/categories'),
+  getOfficers: (departmentId?: number) => {
+    const qs = departmentId ? `?department_id=${departmentId}` : '';
+    return request<User[]>(`/master/officers${qs}`);
+  },
+
+  // Notifications
+  getNotifications: (unreadOnly: boolean = false) =>
+    request<NotificationItem[]>(`/notifications?unread_only=${unreadOnly}`),
+
+  getUnreadNotificationCount: () =>
+    request<{ unread_count: number }>('/notifications/unread-count'),
+
+  markNotificationsRead: (notificationIds?: number[]) =>
+    request<{ status: string; updated_count: number }>('/notifications/mark-read', {
+      method: 'POST',
+      body: JSON.stringify({ notification_ids: notificationIds || [] }),
+    }),
+
+  // Gamification (Milestone F1)
+  getGamificationProgress: () => request<GamificationProgress>('/gamification/me/progress'),
+  updateGamificationPrivacy: (data: { public_display_name?: string; leaderboard_opt_out?: boolean }) =>
+    request<GamificationProgress>('/gamification/me/privacy', {
+      method: 'PUT',
+      body: JSON.stringify(data),
+    }),
+  getCivicLeaderboard: (params?: { scope?: string; period?: string; limit?: number }) => {
+    const searchParams = new URLSearchParams();
+    if (params?.scope) searchParams.set('scope', params.scope);
+    if (params?.period) searchParams.set('period', params.period);
+    if (params?.limit) searchParams.set('limit', params.limit.toString());
+    const qs = searchParams.toString() ? `?${searchParams.toString()}` : '';
+    return request<LeaderboardData>(`/gamification/leaderboard${qs}`);
+  },
+  getPublicProfile: (publicId: string) => request<UserPublicProfile>(`/gamification/users/${publicId}/profile`),
+  getBadges: () => request<BadgeCatalogItem[]>('/gamification/badges'),
+
+  // Infrastructure Projects (Milestone F2)
+  getProjects: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') {
+        query.append(k, String(v));
+      }
+    });
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<ProjectItem[]>(`/projects${qs}`);
+  },
+
+  getProjectDetail: (id: string | number) =>
+    request<ProjectDetail>(`/projects/${encodeURIComponent(String(id))}`),
+
+  getProjectMapPoints: () =>
+    request<ProjectMapPoint[]>('/projects/map'),
+
+  createProject: (payload: any) =>
+    request<ProjectItem>('/projects', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  updateProject: (id: string | number, payload: any) =>
+    request<ProjectItem>(`/projects/${encodeURIComponent(String(id))}`, {
+      method: 'PUT',
+      body: JSON.stringify(payload),
+    }),
+
+  deleteProject: (id: string | number) =>
+    request<{ success: boolean }>(`/projects/${encodeURIComponent(String(id))}`, {
+      method: 'DELETE',
+    }),
+
+  postProjectUpdate: (
+    id: string | number,
+    payload: { note: string; progress_percent?: number; photo_url?: string }
+  ) =>
+    request<ProjectUpdateItem>(`/projects/${encodeURIComponent(String(id))}/updates`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  toggleFollowProject: (id: string | number) =>
+    request<{ success: boolean; is_following: boolean }>(
+      `/projects/${encodeURIComponent(String(id))}/follow`,
+      { method: 'POST' }
+    ),
+
+  rateProjectTransparency: (
+    id: string | number,
+    payload: { transparency_score: number; comment?: string }
+  ) =>
+    request<{ success: boolean; user_rating: number; average_transparency_rating: number }>(
+      `/projects/${encodeURIComponent(String(id))}/transparency-rating`,
+      {
+        method: 'POST',
+        body: JSON.stringify(payload),
+      }
+    ),
+
+  syncGovernmentProjects: () =>
+    request<ProjectSyncResponse>('/projects/sync', { method: 'POST' }),
+
+  bulkImportProjectsCsv: async (file: File) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    return request<{ success: boolean; imported_count: number; errors_count: number; errors: string[] }>(
+      '/projects/bulk-import',
+      {
+        method: 'POST',
+        body: formData,
+      }
+    );
+  },
+};

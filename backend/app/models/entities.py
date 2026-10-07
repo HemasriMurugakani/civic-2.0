@@ -48,6 +48,20 @@ class BadgeRarity(str, enum.Enum):
     LEGENDARY = "legendary"
 
 
+class ProjectStatus(str, enum.Enum):
+    PLANNED = "planned"
+    APPROVED = "approved"
+    IN_PROGRESS = "in_progress"
+    DELAYED = "delayed"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class ProjectSource(str, enum.Enum):
+    LOCAL_TRACKING = "local_tracking"
+    GOVERNMENT_DATA = "government_data"
+
+
 class Department(Base):
     __tablename__ = "departments"
 
@@ -146,6 +160,7 @@ class Complaint(Base):
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
     resolved_at = Column(DateTime, nullable=True)
     verified_at = Column(DateTime, nullable=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
 
     __table_args__ = (
         Index("idx_complaint_status_ward", "status", "ward_id"),
@@ -156,6 +171,7 @@ class Complaint(Base):
     citizen = relationship("User", back_populates="complaints", foreign_keys=[citizen_id])
     category = relationship("ComplaintCategory", back_populates="complaints")
     ward = relationship("Ward", back_populates="complaints")
+    project = relationship("Project", back_populates="complaints")
     assignments = relationship("ComplaintAssignment", back_populates="complaint", cascade="all, delete-orphan")
     status_history = relationship("ComplaintStatusHistory", back_populates="complaint", cascade="all, delete-orphan", order_by="ComplaintStatusHistory.timestamp")
     comments = relationship("ComplaintComment", back_populates="complaint", cascade="all, delete-orphan", order_by="ComplaintComment.created_at")
@@ -366,3 +382,104 @@ class UserBadge(Base):
     __table_args__ = (
         UniqueConstraint("user_id", "badge_id", name="uq_user_badge"),
     )
+
+
+# ==========================================
+# Infrastructure Project Tracker (Milestone F2)
+# ==========================================
+class Project(Base):
+    __tablename__ = "projects"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    category = Column(String(100), nullable=False, index=True)
+    status = Column(SQLEnum(ProjectStatus), default=ProjectStatus.PLANNED, nullable=False, index=True)
+    source = Column(SQLEnum(ProjectSource), default=ProjectSource.LOCAL_TRACKING, nullable=False)
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True, index=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    district = Column(String(100), nullable=True)
+    constituency = Column(String(100), nullable=True)
+    latitude = Column(Float, nullable=True)
+    longitude = Column(Float, nullable=True)
+    contractor = Column(String(255), nullable=True)
+    budget_amount = Column(Float, nullable=True)  # in INR
+    start_date = Column(DateTime, nullable=True)
+    due_date = Column(DateTime, nullable=True, index=True)
+    progress_percent = Column(Float, default=0.0, nullable=False)
+    last_synced_at = Column(DateTime, nullable=True)
+    external_id = Column(String(100), unique=True, nullable=True, index=True)
+    source_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    ward = relationship("Ward")
+    department = relationship("Department")
+    updates = relationship("ProjectUpdate", back_populates="project", cascade="all, delete-orphan", order_by="ProjectUpdate.created_at.desc()")
+    followers = relationship("ProjectFollower", back_populates="project", cascade="all, delete-orphan")
+    ratings = relationship("ProjectRating", back_populates="project", cascade="all, delete-orphan")
+    complaints = relationship("Complaint", back_populates="project")
+
+
+class ProjectUpdate(Base):
+    __tablename__ = "project_updates"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    author_role = Column(String(50), nullable=False)
+    note = Column(Text, nullable=False)
+    progress_percent = Column(Float, nullable=True)
+    photo_url = Column(String(500), nullable=True)
+    is_verified = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    project = relationship("Project", back_populates="updates")
+    author = relationship("User")
+
+
+class ProjectFollower(Base):
+    __tablename__ = "project_followers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    project = relationship("Project", back_populates="followers")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "user_id", name="uq_project_follower"),
+    )
+
+
+class ProjectRating(Base):
+    __tablename__ = "project_ratings"
+
+    id = Column(Integer, primary_key=True, index=True)
+    project_id = Column(Integer, ForeignKey("projects.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    transparency_score = Column(Integer, nullable=False)  # 1 to 5
+    comment = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    project = relationship("Project", back_populates="ratings")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("project_id", "user_id", name="uq_project_rating"),
+    )
+
+
+class ProjectSyncLog(Base):
+    __tablename__ = "project_sync_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    source_name = Column(String(100), nullable=False)
+    status = Column(String(50), nullable=False)  # "success", "failed", "conflict"
+    records_ingested = Column(Integer, default=0, nullable=False)
+    records_updated = Column(Integer, default=0, nullable=False)
+    conflicts_detected = Column(Integer, default=0, nullable=False)
+    log_details = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)

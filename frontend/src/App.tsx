@@ -23,6 +23,8 @@ import { DepartmentDashboardPage } from './pages/department/DepartmentDashboardP
 import { GovernmentAdminPage } from './pages/admin/GovernmentAdminPage';
 import { GisMapPage } from './pages/gis/GisMapPage';
 import { LeaderboardPage } from './pages/citizen/LeaderboardPage';
+import { ProjectsTrackerPage } from './pages/projects/ProjectsTrackerPage';
+import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -51,6 +53,8 @@ export function App() {
               <Route path="/register" element={<RegisterPage />} />
               <Route path="/track" element={<TrackComplaintPage />} />
               <Route path="/leaderboard" element={<LeaderboardPage />} />
+              <Route path="/projects" element={<ProjectsTrackerPage />} />
+              <Route path="/projects/:id" element={<ProjectDetailPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

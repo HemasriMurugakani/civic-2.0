@@ -27,12 +27,14 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
 
-  const isCurrent = (path: string) => location.pathname === path;
+  const isCurrent = (path: string) =>
+    location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
 
   const forYouLinks = [
     { path: '/', label: 'Home', icon: Home },
     { path: '/report', label: 'Report an issue', icon: Megaphone },
     { path: '/issues', label: 'Issues board & map', icon: MessageSquare },
+    { path: '/projects', label: 'Projects Tracker', icon: Landmark },
     { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
   ];
 

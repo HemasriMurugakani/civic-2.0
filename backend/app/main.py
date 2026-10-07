@@ -20,6 +20,7 @@ from app.api.v1.analytics import router as analytics_router
 from app.api.v1.notifications import router as notifications_router
 from app.api.v1.uploads import router as uploads_router
 from app.api.v1.gamification import router as gamification_router
+from app.api.v1.projects import router as projects_router
 from app.core.database import engine, Base
 
 # Configure logging
@@ -106,6 +107,7 @@ app.include_router(analytics_router, prefix=api_v1_prefix)
 app.include_router(notifications_router, prefix=api_v1_prefix)
 app.include_router(uploads_router, prefix=api_v1_prefix)
 app.include_router(gamification_router, prefix=api_v1_prefix)
+app.include_router(projects_router, prefix=api_v1_prefix)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():

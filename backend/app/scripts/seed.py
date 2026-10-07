@@ -19,7 +19,9 @@ from app.models.entities import (
     ComplaintAssignment, ComplaintStatusHistory, ComplaintComment,
     ComplaintEvidence, CitizenFeedback, SLARule, Notification,
     ComplaintStatus, ComplaintPriority, ComplaintChannel, EvidenceType,
-    PointsLedger, Badge, UserBadge, BadgeRarity
+    PointsLedger, Badge, UserBadge, BadgeRarity,
+    Project, ProjectUpdate, ProjectFollower, ProjectRating, ProjectSyncLog,
+    ProjectStatus, ProjectSource
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -221,6 +223,263 @@ def seed_gamification(db: Session):
     db.commit()
     print("✅ Seeded badges, points, and citizen progress for all citizens.")
 
+
+def seed_projects(db: Session):
+    print("🏗️ Seeding Infrastructure Projects (Milestone F2)...")
+    if db.query(Project).first():
+        print("Projects already seeded, skipping.")
+        return
+
+    now = datetime.utcnow()
+    dept_roads = db.query(Department).filter(Department.code == "ROA").first()
+    dept_water = db.query(Department).filter(Department.code == "WAT").first()
+    dept_san = db.query(Department).filter(Department.code == "SAN").first()
+    dept_ele = db.query(Department).filter(Department.code == "ELE").first()
+    dept_pub = db.query(Department).filter(Department.code == "PUB").first()
+
+    wards_map = {w.ward_number: w for w in db.query(Ward).all()}
+    admin_user = db.query(User).filter(User.role == UserRole.GOV_ADMIN).first()
+    dept_admin_roads = db.query(User).filter(User.email == "admin.roads@tngov.in").first() or admin_user
+    citizens = db.query(User).filter(User.role == UserRole.CITIZEN).all()
+
+    projects_data = [
+        {
+            "title": "Metro Phase II Corridor 4 - Power House to Poonamallee",
+            "description": "Elevated rapid transit corridor construction linking Kodambakkam and western suburbs with 12 state-of-the-art stations.",
+            "category": "Public Transit & Roads",
+            "status": ProjectStatus.IN_PROGRESS,
+            "source": ProjectSource.GOVERNMENT_DATA,
+            "ward_id": wards_map.get(130).id if 130 in wards_map else None,
+            "department_id": dept_roads.id if dept_roads else None,
+            "district": "Chennai",
+            "constituency": "Thousand Lights",
+            "latitude": 13.0524,
+            "longitude": 80.2227,
+            "contractor": "L&T Construction Heavy Civil Infra",
+            "budget_amount": 4250000000.0,
+            "start_date": now - timedelta(days=540),
+            "due_date": now + timedelta(days=180),
+            "progress_percent": 68.0,
+            "external_id": "CMRL-PKG-04-2023",
+            "source_url": "https://opendata.chennaicorporation.gov.in/projects/cmrl-04",
+        },
+        {
+            "title": "Stormwater Drain Network Modernization - Zone 13 Adyar Basin",
+            "description": "Deep concrete box culverts and silt catchment pits across vulnerable low-lying neighborhoods in Adyar.",
+            "category": "Drainage & Flood Mitigation",
+            "status": ProjectStatus.IN_PROGRESS,
+            "source": ProjectSource.LOCAL_TRACKING,
+            "ward_id": wards_map.get(173).id if 173 in wards_map else None,
+            "department_id": dept_roads.id if dept_roads else None,
+            "district": "Chennai",
+            "constituency": "Velachery",
+            "latitude": 13.0012,
+            "longitude": 80.2565,
+            "contractor": "Coromandel Infrastructure Ltd",
+            "budget_amount": 85000000.0,
+            "start_date": now - timedelta(days=300),
+            "due_date": now + timedelta(days=60),
+            "progress_percent": 42.0,  # 83% time elapsed vs 42% progress -> progress_lag_alert!
+            "external_id": "SWD-ADYAR-Z13-2024",
+            "source_url": "https://opendata.chennaicorporation.gov.in/swd/adyar-13",
+        },
+        {
+            "title": "Smart Solid Waste Segregation & Bio-CNG Facility - Royapuram",
+            "description": "200-tonne automated sorting and anaerobic digestion plant converting market wet waste into green vehicular fuel.",
+            "category": "Waste Management & Sanitation",
+            "status": ProjectStatus.DELAYED,
+            "source": ProjectSource.GOVERNMENT_DATA,
+            "ward_id": wards_map.get(51).id if 51 in wards_map else None,
+            "department_id": dept_san.id if dept_san else None,
+            "district": "Chennai",
+            "constituency": "Royapuram",
+            "latitude": 13.1137,
+            "longitude": 80.2954,
+            "contractor": "Urbaser Sumeet Waste Tech",
+            "budget_amount": 140000000.0,
+            "start_date": now - timedelta(days=420),
+            "due_date": now - timedelta(days=30),  # Past due -> is_delayed!
+            "progress_percent": 88.0,
+            "external_id": "GCC-SWM-BIO-2023",
+            "source_url": "https://opendata.chennaicorporation.gov.in/swm/royapuram-biocng",
+        },
+        {
+            "title": "Integrated Water Distribution Pipeline Replacement - Anna Nagar",
+            "description": "Replacement of 40-year old ductile iron mains with smart pressure-monitored conduits to eliminate contaminated backflow.",
+            "category": "Water & Sewerage",
+            "status": ProjectStatus.COMPLETED,
+            "source": ProjectSource.GOVERNMENT_DATA,
+            "ward_id": wards_map.get(102).id if 102 in wards_map else None,
+            "department_id": dept_water.id if dept_water else None,
+            "district": "Chennai",
+            "constituency": "Anna Nagar",
+            "latitude": 13.0850,
+            "longitude": 80.2101,
+            "contractor": "Chennai Metrowater Engineering Division",
+            "budget_amount": 62000000.0,
+            "start_date": now - timedelta(days=360),
+            "due_date": now - timedelta(days=45),
+            "progress_percent": 100.0,
+            "external_id": "CMWSSB-AN-DIST-2023",
+            "source_url": "https://opendata.chennaicorporation.gov.in/water/annanagar-dist",
+        },
+        {
+            "title": "LED Smart Streetlight Retrofit & Solar Poles - T. Nagar Plaza",
+            "description": "Deployment of 450 networked smart dimming fixtures with ambient sensors and pedestrian safety monitoring.",
+            "category": "Streetlighting & Electrical",
+            "status": ProjectStatus.COMPLETED,
+            "source": ProjectSource.LOCAL_TRACKING,
+            "ward_id": wards_map.get(117).id if 117 in wards_map else None,
+            "department_id": dept_ele.id if dept_ele else None,
+            "district": "Chennai",
+            "constituency": "T. Nagar",
+            "latitude": 13.0418,
+            "longitude": 80.2341,
+            "contractor": "Bajaj Electricals EPC",
+            "budget_amount": 35000000.0,
+            "start_date": now - timedelta(days=200),
+            "due_date": now - timedelta(days=20),
+            "progress_percent": 100.0,
+            "external_id": "GCC-ELE-TNAG-2024",
+            "source_url": None,
+        },
+        {
+            "title": "Mylapore Heritage Tank Restoration & Rainwater Harvesting",
+            "description": "Desilting historic temple tanks and constructing underground inlet channels to recharge the local water table.",
+            "category": "Water & Environment",
+            "status": ProjectStatus.IN_PROGRESS,
+            "source": ProjectSource.LOCAL_TRACKING,
+            "ward_id": wards_map.get(124).id if 124 in wards_map else None,
+            "department_id": dept_water.id if dept_water else None,
+            "district": "Chennai",
+            "constituency": "Mylapore",
+            "latitude": 13.0339,
+            "longitude": 80.2676,
+            "contractor": "Tamil Nadu Urban Heritage & Water Trust",
+            "budget_amount": 28000000.0,
+            "start_date": now - timedelta(days=180),
+            "due_date": now + timedelta(days=120),
+            "progress_percent": 55.0,
+            "external_id": "CMWSSB-MYL-TANK-2024",
+            "source_url": None,
+        },
+        {
+            "title": "Velachery Lake Eco-Restoration & Public Greenway",
+            "description": "Biological water purification wetlands, 2.4km walking promenade, and bio-fencing to prevent illegal dumping.",
+            "category": "Parks & Urban Ecology",
+            "status": ProjectStatus.PLANNED,
+            "source": ProjectSource.GOVERNMENT_DATA,
+            "ward_id": wards_map.get(178).id if 178 in wards_map else None,
+            "department_id": dept_pub.id if dept_pub else None,
+            "district": "Chennai",
+            "constituency": "Velachery",
+            "latitude": 12.9815,
+            "longitude": 80.2180,
+            "contractor": "GCC Eco-Restoration Cell",
+            "budget_amount": 115000000.0,
+            "start_date": now - timedelta(days=30),
+            "due_date": now + timedelta(days=420),
+            "progress_percent": 5.0,
+            "external_id": "GCC-ECO-VEL-2024",
+            "source_url": "https://opendata.chennaicorporation.gov.in/eco/velachery-greenway",
+        },
+        {
+            "title": "Guindy Industrial Area Primary Health Center Expansion",
+            "description": "Addition of a 30-bed maternal care wing, computerized diagnostic lab, and solar rooftop power array.",
+            "category": "Healthcare Infrastructure",
+            "status": ProjectStatus.IN_PROGRESS,
+            "source": ProjectSource.LOCAL_TRACKING,
+            "ward_id": wards_map.get(168).id if 168 in wards_map else None,
+            "department_id": dept_pub.id if dept_pub else None,
+            "district": "Chennai",
+            "constituency": "Guindy",
+            "latitude": 13.0067,
+            "longitude": 80.2025,
+            "contractor": "TN Medical Services Corporation",
+            "budget_amount": 48000000.0,
+            "start_date": now - timedelta(days=240),
+            "due_date": now + timedelta(days=90),
+            "progress_percent": 75.0,
+            "external_id": "TNMSC-GUINDY-PHC-2024",
+            "source_url": None,
+        },
+    ]
+
+    created_projects = []
+    for pd in projects_data:
+        proj = Project(**pd)
+        db.add(proj)
+        created_projects.append(proj)
+    db.commit()
+
+    for p in created_projects:
+        db.refresh(p)
+
+    # Seed updates, followers, ratings, and link some complaints
+    for p in created_projects:
+        # Add staff update
+        u1 = ProjectUpdate(
+            project_id=p.id,
+            author_id=dept_admin_roads.id,
+            author_role=dept_admin_roads.role.value,
+            note=f"Quarterly review completed. Milestones verified for {p.title[:40]}.",
+            progress_percent=p.progress_percent,
+            photo_url=None,
+            is_verified=True,
+            created_at=now - timedelta(days=15),
+        )
+        db.add(u1)
+
+        # Add citizen community update
+        if citizens:
+            c_user = random.choice(citizens)
+            u2 = ProjectUpdate(
+                project_id=p.id,
+                author_id=c_user.id,
+                author_role=UserRole.CITIZEN.value,
+                note="Inspected the perimeter on morning walk. Construction barriers are intact and dust suppression spraying active.",
+                progress_percent=None,
+                photo_url=None,
+                is_verified=False,
+                created_at=now - timedelta(days=3),
+            )
+            db.add(u2)
+
+            # Follower
+            db.add(ProjectFollower(project_id=p.id, user_id=c_user.id, created_at=now - timedelta(days=10)))
+
+            # Transparency rating
+            rating_val = 5 if p.status == ProjectStatus.COMPLETED else (3 if p.status == ProjectStatus.DELAYED else 4)
+            db.add(ProjectRating(
+                project_id=p.id,
+                user_id=c_user.id,
+                transparency_score=rating_val,
+                comment="Appreciate the transparent milestones on display.",
+                created_at=now - timedelta(days=5),
+            ))
+
+        # Link some complaints matching ward
+        if p.ward_id:
+            complaints_in_ward = db.query(Complaint).filter(Complaint.ward_id == p.ward_id).limit(4).all()
+            for c in complaints_in_ward:
+                c.project_id = p.id
+
+    # Create initial Sync Log
+    sync_log = ProjectSyncLog(
+        source_name="Tamil Nadu Open Data Portal (GCC)",
+        status="success",
+        records_ingested=len(created_projects),
+        records_updated=0,
+        conflicts_detected=0,
+        log_details="Initial automated baseline sync completed successfully.",
+        created_at=now,
+    )
+    db.add(sync_log)
+
+    db.commit()
+    print(f"✅ Successfully seeded {len(created_projects)} infrastructure projects with updates and ratings!")
+
+
 def seed_database(reset: bool = False):
     random.seed(42)
     db: Session = SessionLocal()
@@ -237,6 +496,8 @@ def seed_database(reset: bool = False):
     # Check if already seeded
     existing_dept = db.query(Department).first()
     if existing_dept and not reset:
+        if db.query(Project).count() == 0:
+            seed_projects(db)
         print("Database already contains data. Use --reset to re-seed from scratch.")
         db.close()
         return
@@ -784,6 +1045,9 @@ def seed_database(reset: bool = False):
 
     # 5. Seed Gamification: Badges & Initial Points (Milestone F1)
     seed_gamification(db)
+
+    # 6. Seed Infrastructure Projects (Milestone F2)
+    seed_projects(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)
