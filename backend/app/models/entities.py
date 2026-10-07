@@ -483,3 +483,249 @@ class ProjectSyncLog(Base):
     conflicts_detected = Column(Integer, default=0, nullable=False)
     log_details = Column(Text, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+
+# ==========================================
+# Community Hub (Milestone F3)
+# ==========================================
+class GroupVisibility(str, enum.Enum):
+    PUBLIC = "public"
+    PRIVATE = "private"
+
+
+class GroupMemberRole(str, enum.Enum):
+    MEMBER = "member"
+    MODERATOR = "moderator"
+
+
+class FlagStatus(str, enum.Enum):
+    PENDING = "pending"
+    REVIEWED = "reviewed"
+    DISMISSED = "dismissed"
+
+
+class ConnectionStatus(str, enum.Enum):
+    PENDING = "pending"
+    ACCEPTED = "accepted"
+    REJECTED = "rejected"
+    BLOCKED = "blocked"
+
+
+class Group(Base):
+    __tablename__ = "groups"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    category = Column(String(100), nullable=False, index=True)
+    district = Column(String(100), nullable=True)
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True, index=True)
+    visibility = Column(SQLEnum(GroupVisibility), default=GroupVisibility.PUBLIC, nullable=False)
+    moderator_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    member_count = Column(Integer, default=1, nullable=False)
+    last_activity_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    is_active = Column(Boolean, default=True, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    ward = relationship("Ward")
+    moderator = relationship("User", foreign_keys=[moderator_id])
+    memberships = relationship("GroupMembership", back_populates="group", cascade="all, delete-orphan")
+    posts = relationship("GroupPost", back_populates="group", cascade="all, delete-orphan", order_by="GroupPost.created_at.desc()")
+
+
+class GroupMembership(Base):
+    __tablename__ = "group_memberships"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    role = Column(SQLEnum(GroupMemberRole), default=GroupMemberRole.MEMBER, nullable=False)
+    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    group = relationship("Group", back_populates="memberships")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("group_id", "user_id", name="uq_group_membership"),
+    )
+
+
+class GroupPost(Base):
+    __tablename__ = "group_posts"
+
+    id = Column(Integer, primary_key=True, index=True)
+    group_id = Column(Integer, ForeignKey("groups.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    content = Column(Text, nullable=False)
+    is_pinned = Column(Boolean, default=False, nullable=False)
+    is_hidden = Column(Boolean, default=False, nullable=False)
+    upvotes_count = Column(Integer, default=0, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    group = relationship("Group", back_populates="posts")
+    author = relationship("User")
+    comments = relationship("GroupPostComment", back_populates="post", cascade="all, delete-orphan", order_by="GroupPostComment.created_at.asc()")
+
+
+class GroupPostComment(Base):
+    __tablename__ = "group_post_comments"
+
+    id = Column(Integer, primary_key=True, index=True)
+    post_id = Column(Integer, ForeignKey("group_posts.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    parent_id = Column(Integer, ForeignKey("group_post_comments.id"), nullable=True, index=True)
+    is_hidden = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    post = relationship("GroupPost", back_populates="comments")
+    author = relationship("User")
+
+
+class DiscussionThread(Base):
+    __tablename__ = "discussion_threads"
+
+    id = Column(Integer, primary_key=True, index=True)
+    title = Column(String(255), nullable=False, index=True)
+    body = Column(Text, nullable=False)
+    category = Column(String(100), nullable=False, index=True)
+    district = Column(String(100), nullable=True)
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    linked_complaint_id = Column(Integer, ForeignKey("complaints.id"), nullable=True, index=True)
+    linked_project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    upvotes_count = Column(Integer, default=0, nullable=False)
+    replies_count = Column(Integer, default=0, nullable=False)
+    is_pinned = Column(Boolean, default=False, nullable=False)
+    is_locked = Column(Boolean, default=False, nullable=False)
+    is_hidden = Column(Boolean, default=False, nullable=False)
+    best_answer_id = Column(Integer, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    author = relationship("User")
+    ward = relationship("Ward")
+    linked_complaint = relationship("Complaint")
+    linked_project = relationship("Project")
+    replies = relationship("DiscussionReply", back_populates="thread", cascade="all, delete-orphan", order_by="DiscussionReply.created_at.asc()")
+    upvotes = relationship("ThreadUpvote", back_populates="thread", cascade="all, delete-orphan")
+    followers = relationship("ThreadFollower", back_populates="thread", cascade="all, delete-orphan")
+
+
+class DiscussionReply(Base):
+    __tablename__ = "discussion_replies"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("discussion_threads.id"), nullable=False, index=True)
+    author_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    content = Column(Text, nullable=False)
+    parent_id = Column(Integer, ForeignKey("discussion_replies.id"), nullable=True, index=True)
+    upvotes_count = Column(Integer, default=0, nullable=False)
+    is_best_answer = Column(Boolean, default=False, nullable=False)
+    is_hidden = Column(Boolean, default=False, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    thread = relationship("DiscussionThread", back_populates="replies")
+    author = relationship("User")
+    upvotes = relationship("ReplyUpvote", back_populates="reply", cascade="all, delete-orphan")
+
+
+class ThreadUpvote(Base):
+    __tablename__ = "thread_upvotes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("discussion_threads.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    thread = relationship("DiscussionThread", back_populates="upvotes")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("thread_id", "user_id", name="uq_thread_upvote"),
+    )
+
+
+class ReplyUpvote(Base):
+    __tablename__ = "reply_upvotes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reply_id = Column(Integer, ForeignKey("discussion_replies.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    reply = relationship("DiscussionReply", back_populates="upvotes")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("reply_id", "user_id", name="uq_reply_upvote"),
+    )
+
+
+class ThreadFollower(Base):
+    __tablename__ = "thread_followers"
+
+    id = Column(Integer, primary_key=True, index=True)
+    thread_id = Column(Integer, ForeignKey("discussion_threads.id"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    thread = relationship("DiscussionThread", back_populates="followers")
+    user = relationship("User")
+
+    __table_args__ = (
+        UniqueConstraint("thread_id", "user_id", name="uq_thread_follower"),
+    )
+
+
+class CitizenConnection(Base):
+    __tablename__ = "citizen_connections"
+
+    id = Column(Integer, primary_key=True, index=True)
+    requester_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    receiver_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    status = Column(SQLEnum(ConnectionStatus), default=ConnectionStatus.PENDING, nullable=False, index=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    requester = relationship("User", foreign_keys=[requester_id])
+    receiver = relationship("User", foreign_keys=[receiver_id])
+
+    __table_args__ = (
+        UniqueConstraint("requester_id", "receiver_id", name="uq_citizen_connection"),
+    )
+
+
+class ContentFlag(Base):
+    __tablename__ = "content_flags"
+
+    id = Column(Integer, primary_key=True, index=True)
+    reporter_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    content_type = Column(String(50), nullable=False)  # "group_post", "group_comment", "thread", "thread_reply"
+    content_id = Column(Integer, nullable=False, index=True)
+    reason = Column(String(255), nullable=False)
+    status = Column(SQLEnum(FlagStatus), default=FlagStatus.PENDING, nullable=False, index=True)
+    reviewed_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    action_taken = Column(String(50), nullable=True)  # "hidden", "warned", "dismissed"
+    reviewed_at = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    reporter = relationship("User", foreign_keys=[reporter_id])
+    reviewer = relationship("User", foreign_keys=[reviewed_by])
+
+
+class ModerationAuditLog(Base):
+    __tablename__ = "moderation_audit_logs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    actor_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action = Column(String(50), nullable=False)  # "hide_content", "warn_user", "dismiss_flag", "pin_post"
+    target_type = Column(String(50), nullable=False)
+    target_id = Column(Integer, nullable=False)
+    note = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    actor = relationship("User")
+

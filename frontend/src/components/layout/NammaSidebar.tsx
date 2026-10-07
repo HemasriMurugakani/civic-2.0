@@ -35,6 +35,7 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
     { path: '/report', label: 'Report an issue', icon: Megaphone },
     { path: '/issues', label: 'Issues board & map', icon: MessageSquare },
     { path: '/projects', label: 'Projects Tracker', icon: Landmark },
+    { path: '/community', label: 'Community Hub', icon: Users },
     { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
   ];
 

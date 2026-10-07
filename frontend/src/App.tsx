@@ -25,6 +25,9 @@ import { GisMapPage } from './pages/gis/GisMapPage';
 import { LeaderboardPage } from './pages/citizen/LeaderboardPage';
 import { ProjectsTrackerPage } from './pages/projects/ProjectsTrackerPage';
 import { ProjectDetailPage } from './pages/projects/ProjectDetailPage';
+import { CommunityHubPage } from './pages/community/CommunityHubPage';
+import { GroupDetailPage } from './pages/community/GroupDetailPage';
+import { ThreadDetailPage } from './pages/community/ThreadDetailPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -55,6 +58,9 @@ export function App() {
               <Route path="/leaderboard" element={<LeaderboardPage />} />
               <Route path="/projects" element={<ProjectsTrackerPage />} />
               <Route path="/projects/:id" element={<ProjectDetailPage />} />
+              <Route path="/community" element={<CommunityHubPage />} />
+              <Route path="/community/groups/:id" element={<GroupDetailPage />} />
+              <Route path="/community/threads/:id" element={<ThreadDetailPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

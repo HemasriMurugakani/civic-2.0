@@ -3,7 +3,10 @@ import {
   KPIData, WardHotspot, OfficerWorkload, DailyTrend, DepartmentLeaderboard,
   Department, Ward, Category, NotificationItem,
   GamificationProgress, LeaderboardData, UserPublicProfile, BadgeCatalogItem,
-  ProjectItem, ProjectDetail, ProjectUpdateItem, ProjectMapPoint, ProjectSyncResponse
+  ProjectItem, ProjectDetail, ProjectUpdateItem, ProjectMapPoint, ProjectSyncResponse,
+  GroupListItem, GroupDetail, GroupPostItem, GroupCommentItem,
+  ThreadListItem, ThreadDetail, ThreadReplyItem, ConnectionItem,
+  ContentFlagItem, ModerationAuditLogItem
 } from './types';
 
 const API_BASE = '/api/v1';
@@ -306,4 +309,128 @@ export const api = {
       }
     );
   },
+
+  // Community Hub (Milestone F3)
+  getGroups: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+    });
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<GroupListItem[]>(`/community/groups${qs}`);
+  },
+
+  getGroupDetail: (id: string | number) =>
+    request<GroupDetail>(`/community/groups/${encodeURIComponent(String(id))}`),
+
+  createGroup: (payload: any) =>
+    request<GroupListItem>('/community/groups', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  joinGroup: (id: string | number) =>
+    request<{ success: boolean; message: string; role: string }>(`/community/groups/${encodeURIComponent(String(id))}/join`, {
+      method: 'POST',
+    }),
+
+  leaveGroup: (id: string | number) =>
+    request<{ success: boolean; message: string }>(`/community/groups/${encodeURIComponent(String(id))}/leave`, {
+      method: 'POST',
+    }),
+
+  postGroupPost: (groupId: string | number, payload: { title: string; content: string }) =>
+    request<GroupPostItem>(`/community/groups/${encodeURIComponent(String(groupId))}/posts`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  pinGroupPost: (postId: string | number) =>
+    request<{ success: boolean; is_pinned: boolean }>(`/community/groups/posts/${encodeURIComponent(String(postId))}/pin`, {
+      method: 'POST',
+    }),
+
+  addPostComment: (postId: string | number, payload: { content: string; parent_id?: number }) =>
+    request<GroupCommentItem>(`/community/groups/posts/${encodeURIComponent(String(postId))}/comments`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getThreads: (params: Record<string, any> = {}) => {
+    const query = new URLSearchParams();
+    Object.entries(params).forEach(([k, v]) => {
+      if (v !== undefined && v !== null && v !== '') query.append(k, String(v));
+    });
+    const qs = query.toString() ? `?${query.toString()}` : '';
+    return request<ThreadListItem[]>(`/community/threads${qs}`);
+  },
+
+  getThreadDetail: (id: string | number) =>
+    request<ThreadDetail>(`/community/threads/${encodeURIComponent(String(id))}`),
+
+  createThread: (payload: any) =>
+    request<ThreadListItem>('/community/threads', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  upvoteThread: (id: string | number) =>
+    request<{ upvoted: boolean; upvotes_count: number }>(`/community/threads/${encodeURIComponent(String(id))}/upvote`, {
+      method: 'POST',
+    }),
+
+  followThread: (id: string | number) =>
+    request<{ success: boolean; is_following: boolean }>(`/community/threads/${encodeURIComponent(String(id))}/follow`, {
+      method: 'POST',
+    }),
+
+  postThreadReply: (threadId: string | number, payload: { content: string; parent_id?: number }) =>
+    request<ThreadReplyItem>(`/community/threads/${encodeURIComponent(String(threadId))}/replies`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  upvoteThreadReply: (replyId: string | number) =>
+    request<{ upvoted: boolean; upvotes_count: number }>(`/community/threads/replies/${encodeURIComponent(String(replyId))}/upvote`, {
+      method: 'POST',
+    }),
+
+  markBestAnswer: (threadId: string | number, replyId: string | number) =>
+    request<{ success: boolean; best_answer_id: number }>(`/community/threads/${encodeURIComponent(String(threadId))}/replies/${encodeURIComponent(String(replyId))}/best-answer`, {
+      method: 'POST',
+    }),
+
+  getConnections: () =>
+    request<ConnectionItem[]>('/community/connections'),
+
+  requestConnection: (receiverId: number) =>
+    request<{ success: boolean; status: string; message: string }>('/community/connections/request', {
+      method: 'POST',
+      body: JSON.stringify({ receiver_id: receiverId }),
+    }),
+
+  respondConnection: (connectionId: number, action: 'accept' | 'reject' | 'block') =>
+    request<{ success: boolean; status: string }>(`/community/connections/${encodeURIComponent(String(connectionId))}/respond?action=${action}`, {
+      method: 'POST',
+    }),
+
+  flagContent: (payload: { content_type: string; content_id: number; reason: string }) =>
+    request<{ success: boolean; flag_id: number; message: string }>('/community/flags', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getModerationFlags: (statusFilter?: string) => {
+    const qs = statusFilter ? `?status=${statusFilter}` : '';
+    return request<ContentFlagItem[]>(`/community/flags${qs}`);
+  },
+
+  actionModerationFlag: (flagId: number, payload: { action: string; note?: string }) =>
+    request<{ success: boolean; action_taken: string; status: string }>(`/community/flags/${encodeURIComponent(String(flagId))}/action`, {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
+  getModerationAuditLogs: () =>
+    request<ModerationAuditLogItem[]>('/community/audit-logs'),
 };

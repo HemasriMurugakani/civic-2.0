@@ -21,7 +21,11 @@ from app.models.entities import (
     ComplaintStatus, ComplaintPriority, ComplaintChannel, EvidenceType,
     PointsLedger, Badge, UserBadge, BadgeRarity,
     Project, ProjectUpdate, ProjectFollower, ProjectRating, ProjectSyncLog,
-    ProjectStatus, ProjectSource
+    ProjectStatus, ProjectSource,
+    Group, GroupMembership, GroupPost, GroupPostComment,
+    DiscussionThread, DiscussionReply, ThreadUpvote, ReplyUpvote, ThreadFollower,
+    CitizenConnection, ContentFlag, ModerationAuditLog,
+    GroupVisibility, GroupMemberRole, FlagStatus, ConnectionStatus
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -480,6 +484,284 @@ def seed_projects(db: Session):
     print(f"✅ Successfully seeded {len(created_projects)} infrastructure projects with updates and ratings!")
 
 
+def seed_community(db: Session):
+    print("🤝 Seeding Community Hub: Groups, Discussions & Connections (Milestone F3)...")
+    if db.query(Group).first():
+        print("Community Hub already seeded, skipping.")
+        return
+
+    now = datetime.utcnow()
+    wards_map = {w.ward_number: w for w in db.query(Ward).all()}
+    citizens = db.query(User).filter(User.role == UserRole.CITIZEN).all()
+    officers = db.query(User).filter(User.role == UserRole.OFFICER).all()
+
+    if not citizens:
+        print("No citizens available for community seeding.")
+        return
+
+    c1 = citizens[0]
+    c2 = citizens[1] if len(citizens) > 1 else c1
+    c3 = citizens[2] if len(citizens) > 2 else c1
+    off1 = officers[0] if officers else c1
+
+    projects_map = {p.title[:20]: p for p in db.query(Project).all()}
+    metro_proj = next((p for p in db.query(Project).all() if "Metro" in p.title), None)
+    swd_proj = next((p for p in db.query(Project).all() if "Drain" in p.title or "Stormwater" in p.title), None)
+
+    # 1. Seed Groups
+    groups_data = [
+        {
+            "name": "Adyar Riverfront & Eco Restoration Brigade",
+            "description": "Community volunteers advocating for clean waterways, plastic-free banks, and urban greenery across Zone 13 Adyar.",
+            "category": "Urban Ecology & Water",
+            "district": "Chennai",
+            "ward_id": wards_map.get(173).id if 173 in wards_map else None,
+            "visibility": GroupVisibility.PUBLIC,
+            "moderator_id": c1.id,
+            "member_count": 3,
+            "last_activity_at": now - timedelta(hours=2),
+            "created_at": now - timedelta(days=20),
+        },
+        {
+            "name": "Royapuram Solid Waste Vigilance Forum",
+            "description": "Resident action collective ensuring zero waste dumping on street corners and promoting wet-waste composting.",
+            "category": "Sanitation & Cleanliness",
+            "district": "Chennai",
+            "ward_id": wards_map.get(51).id if 51 in wards_map else None,
+            "visibility": GroupVisibility.PUBLIC,
+            "moderator_id": c2.id,
+            "member_count": 2,
+            "last_activity_at": now - timedelta(hours=8),
+            "created_at": now - timedelta(days=15),
+        },
+        {
+            "name": "T. Nagar Pedestrian Safety & Street Mobility",
+            "description": "Smart transit observers tracking safe footpaths, pedestrian plaza maintenance, and barrier-free crossings.",
+            "category": "Road Safety & Mobility",
+            "district": "Chennai",
+            "ward_id": wards_map.get(117).id if 117 in wards_map else None,
+            "visibility": GroupVisibility.PUBLIC,
+            "moderator_id": c3.id,
+            "member_count": 3,
+            "last_activity_at": now - timedelta(days=1),
+            "created_at": now - timedelta(days=10),
+        },
+        {
+            "name": "Anna Nagar Clean Green Residents Council",
+            "description": "Promoting native tree planting, organic kitchen gardening, and avenue maintenance in Zone 8.",
+            "category": "Neighborhood Welfare",
+            "district": "Chennai",
+            "ward_id": wards_map.get(102).id if 102 in wards_map else None,
+            "visibility": GroupVisibility.PUBLIC,
+            "moderator_id": c1.id,
+            "member_count": 2,
+            "last_activity_at": now - timedelta(days=2),
+            "created_at": now - timedelta(days=5),
+        },
+    ]
+
+    created_groups = []
+    for gd in groups_data:
+        grp = Group(**gd)
+        db.add(grp)
+        created_groups.append(grp)
+    db.commit()
+
+    for g in created_groups:
+        db.refresh(g)
+
+    # Add Memberships & Group Posts
+    for idx, g in enumerate(created_groups):
+        # Moderator membership
+        db.add(GroupMembership(group_id=g.id, user_id=g.moderator_id, role=GroupMemberRole.MODERATOR, joined_at=g.created_at))
+        # Additional members
+        if c2.id != g.moderator_id:
+            db.add(GroupMembership(group_id=g.id, user_id=c2.id, role=GroupMemberRole.MEMBER, joined_at=g.created_at + timedelta(days=1)))
+        if c3.id != g.moderator_id:
+            db.add(GroupMembership(group_id=g.id, user_id=c3.id, role=GroupMemberRole.MEMBER, joined_at=g.created_at + timedelta(days=2)))
+
+        # Pinned welcome post
+        post1 = GroupPost(
+            group_id=g.id,
+            author_id=g.moderator_id,
+            title=f"Welcome to the {g.name}!",
+            content="Welcome neighbors! This forum is dedicated to organizing neighborhood audits, civic awareness drives, and working cordially with GCC zonal officers. Please keep comments respectful and solution-oriented.",
+            is_pinned=True,
+            is_hidden=False,
+            upvotes_count=8,
+            created_at=g.created_at + timedelta(hours=1),
+        )
+        db.add(post1)
+
+        # General topic post
+        post2 = GroupPost(
+            group_id=g.id,
+            author_id=c2.id if c2.id != g.moderator_id else c3.id,
+            title="Weekend Neighborhood Walk & Ground Status Audit",
+            content="We are conducting an informal ground observation walk this Saturday 7 AM. We will note down blocked storm drains, dangling wires, and dark spots to log on the Namma Chennai portal.",
+            is_pinned=False,
+            is_hidden=False,
+            upvotes_count=5,
+            created_at=g.created_at + timedelta(days=2),
+        )
+        db.add(post2)
+        db.commit()
+        db.refresh(post2)
+
+        # Comment on post
+        comm = GroupPostComment(
+            post_id=post2.id,
+            author_id=g.moderator_id,
+            content="Count me in! I will bring clipboards and the mobile app to verify existing reports.",
+            parent_id=None,
+            is_hidden=False,
+            created_at=post2.created_at + timedelta(hours=3),
+        )
+        db.add(comm)
+
+    # 2. Seed Discussion Threads
+    threads_data = [
+        {
+            "title": "Rainwater Harvesting & Drain Desilting ahead of Northeast Monsoon",
+            "body": "With monsoon rainfall approaching, what is the best sequence to inspect our street drain silt catchments? Many silt traps in Adyar are currently filled with road grit. Has anyone contacted the local AE?",
+            "category": "Drainage & Flood Mitigation",
+            "district": "Chennai",
+            "ward_id": wards_map.get(173).id if 173 in wards_map else None,
+            "author_id": c1.id,
+            "linked_project_id": swd_proj.id if swd_proj else None,
+            "upvotes_count": 14,
+            "replies_count": 3,
+            "is_pinned": True,
+            "is_locked": False,
+            "created_at": now - timedelta(days=12),
+            "updated_at": now - timedelta(hours=4),
+        },
+        {
+            "title": "Door-to-Door Source Segregation: Best practices for residential complexes",
+            "body": "Our apartment RWA successfully transitioned to 100% two-bin one-bag segregation last month. Sharing what worked: colored bins on each floor, waste audits, and recognizing our housekeeping team with monthly certificates.",
+            "category": "Waste Management & Sanitation",
+            "district": "Chennai",
+            "ward_id": wards_map.get(51).id if 51 in wards_map else None,
+            "author_id": c2.id,
+            "upvotes_count": 22,
+            "replies_count": 2,
+            "is_pinned": False,
+            "is_locked": False,
+            "created_at": now - timedelta(days=8),
+            "updated_at": now - timedelta(hours=18),
+        },
+        {
+            "title": "Traffic Diversions on Arcot Road during Metro Phase 2 Underground Works",
+            "body": "The construction barricades near Power House have redirected two-wheelers through residential side streets. Can traffic police deploy marshals at the narrow 4th Avenue junction during peak school hours?",
+            "category": "Traffic & Mobility",
+            "district": "Chennai",
+            "ward_id": wards_map.get(130).id if 130 in wards_map else None,
+            "author_id": c3.id,
+            "linked_project_id": metro_proj.id if metro_proj else None,
+            "upvotes_count": 18,
+            "replies_count": 2,
+            "is_pinned": False,
+            "is_locked": False,
+            "created_at": now - timedelta(days=5),
+            "updated_at": now - timedelta(days=1),
+        },
+        {
+            "title": "How to get non-functional LED smart streetlights audited and replaced?",
+            "body": "We have three consecutive poles on South Usman Road that have been dark for a week. Filing through the portal was quick, but does anyone know the SLA for electrical sensor repairs?",
+            "category": "Streetlighting & Electrical",
+            "district": "Chennai",
+            "ward_id": wards_map.get(117).id if 117 in wards_map else None,
+            "author_id": c1.id,
+            "upvotes_count": 9,
+            "replies_count": 1,
+            "is_pinned": False,
+            "is_locked": False,
+            "created_at": now - timedelta(days=3),
+            "updated_at": now - timedelta(days=2),
+        },
+        {
+            "title": "Community Health Alert: Anti-larval mosquito fogging schedules in Mylapore",
+            "body": "Public Health field staff are conducting fogging rounds this Tuesday and Friday between 6 AM and 8 AM. Please ensure terrace overhead tanks and discarded planters have no stagnant rainwater.",
+            "category": "Public Health & Hygiene",
+            "district": "Chennai",
+            "ward_id": wards_map.get(124).id if 124 in wards_map else None,
+            "author_id": off1.id,
+            "upvotes_count": 31,
+            "replies_count": 2,
+            "is_pinned": True,
+            "is_locked": False,
+            "created_at": now - timedelta(days=4),
+            "updated_at": now - timedelta(hours=6),
+        },
+    ]
+
+    for td in threads_data:
+        t = DiscussionThread(**td)
+        db.add(t)
+        db.commit()
+        db.refresh(t)
+
+        # Add upvotes
+        db.add(ThreadUpvote(thread_id=t.id, user_id=c1.id, created_at=now - timedelta(days=2)))
+        db.add(ThreadFollower(thread_id=t.id, user_id=c1.id, created_at=now - timedelta(days=2)))
+        if c2.id != c1.id:
+            db.add(ThreadUpvote(thread_id=t.id, user_id=c2.id, created_at=now - timedelta(days=1)))
+            db.add(ThreadFollower(thread_id=t.id, user_id=c2.id, created_at=now - timedelta(days=1)))
+
+        # Add replies
+        r1 = DiscussionReply(
+            thread_id=t.id,
+            author_id=c2.id if c2.id != t.author_id else c1.id,
+            content="Great point! In our street, we reported the silt chamber via the portal and attached a photo. The zonal superintending engineer cleared it within 48 hours.",
+            parent_id=None,
+            upvotes_count=7,
+            is_best_answer=True,
+            is_hidden=False,
+            created_at=t.created_at + timedelta(hours=5),
+        )
+        db.add(r1)
+        db.commit()
+        db.refresh(r1)
+
+        t.best_answer_id = r1.id
+        db.commit()
+
+        # Reply upvote
+        db.add(ReplyUpvote(reply_id=r1.id, user_id=c3.id, created_at=now - timedelta(days=1)))
+
+    # 3. Seed Citizen Connections
+    db.add(CitizenConnection(
+        requester_id=c1.id,
+        receiver_id=c2.id,
+        status=ConnectionStatus.ACCEPTED,
+        created_at=now - timedelta(days=7),
+        updated_at=now - timedelta(days=6),
+    ))
+    if len(citizens) > 2:
+        db.add(CitizenConnection(
+            requester_id=c3.id,
+            receiver_id=c1.id,
+            status=ConnectionStatus.PENDING,
+            created_at=now - timedelta(days=1),
+            updated_at=now - timedelta(days=1),
+        ))
+
+    # 4. Seed sample content flag for moderation queue
+    sample_thread = db.query(DiscussionThread).first()
+    if sample_thread:
+        db.add(ContentFlag(
+            reporter_id=c2.id,
+            content_type="thread",
+            content_id=sample_thread.id,
+            reason="Commercial solicitation suspected in footer link",
+            status=FlagStatus.PENDING,
+            created_at=now - timedelta(hours=3),
+        ))
+
+    db.commit()
+    print("✅ Successfully seeded Community Hub: 4 groups, 5 threads, replies, and citizen connections!")
+
+
 def seed_database(reset: bool = False):
     random.seed(42)
     db: Session = SessionLocal()
@@ -498,6 +780,8 @@ def seed_database(reset: bool = False):
     if existing_dept and not reset:
         if db.query(Project).count() == 0:
             seed_projects(db)
+        if db.query(Group).count() == 0:
+            seed_community(db)
         print("Database already contains data. Use --reset to re-seed from scratch.")
         db.close()
         return
@@ -1048,6 +1332,9 @@ def seed_database(reset: bool = False):
 
     # 6. Seed Infrastructure Projects (Milestone F2)
     seed_projects(db)
+
+    # 7. Seed Community Hub (Milestone F3)
+    seed_community(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)

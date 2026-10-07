@@ -414,3 +414,139 @@ export interface ProjectSyncResponse {
   synced_at: string;
 }
 
+// Milestone F3: Community Hub Types
+export interface GroupListItem {
+  id: number;
+  name: string;
+  description?: string;
+  category: string;
+  district?: string;
+  ward_id?: number;
+  ward_name?: string;
+  visibility: 'public' | 'private';
+  moderator_id: number;
+  moderator_name: string;
+  member_count: number;
+  posts_count: number;
+  is_member: boolean;
+  my_role?: 'member' | 'moderator';
+  last_activity_at: string;
+  created_at: string;
+}
+
+export interface GroupCommentItem {
+  id: number;
+  post_id: number;
+  author_id: number;
+  author_name: string;
+  author_role: string;
+  content: string;
+  parent_id?: number;
+  is_hidden: boolean;
+  created_at: string;
+}
+
+export interface GroupPostItem {
+  id: number;
+  group_id: number;
+  author_id: number;
+  author_name: string;
+  author_role: string;
+  title: string;
+  content: string;
+  is_pinned: boolean;
+  is_hidden: boolean;
+  upvotes_count: number;
+  comments_count: number;
+  comments: GroupCommentItem[];
+  created_at: string;
+}
+
+export interface GroupDetail extends GroupListItem {
+  posts: GroupPostItem[];
+}
+
+export interface ThreadListItem {
+  id: number;
+  title: string;
+  category: string;
+  district?: string;
+  ward_id?: number;
+  ward_name?: string;
+  author_id: number;
+  author_name: string;
+  author_role: string;
+  author_level: number;
+  upvotes_count: number;
+  replies_count: number;
+  has_upvoted: boolean;
+  is_following: boolean;
+  is_pinned: boolean;
+  is_locked: boolean;
+  has_best_answer: boolean;
+  linked_complaint_id?: number;
+  linked_project_id?: number;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface ThreadReplyItem {
+  id: number;
+  thread_id: number;
+  author_id: number;
+  author_name: string;
+  author_role: string;
+  author_level: number;
+  content: string;
+  parent_id?: number;
+  upvotes_count: number;
+  has_upvoted: boolean;
+  is_best_answer: boolean;
+  is_hidden: boolean;
+  created_at: string;
+}
+
+export interface ThreadDetail extends ThreadListItem {
+  body: string;
+  linked_complaint_title?: string;
+  linked_project_title?: string;
+  replies: ThreadReplyItem[];
+}
+
+export interface ConnectionItem {
+  id: number;
+  other_user_id: number;
+  other_user_name: string;
+  other_user_public_id?: string;
+  status: 'pending' | 'accepted' | 'rejected' | 'blocked';
+  direction: 'incoming' | 'outgoing';
+  created_at: string;
+}
+
+export interface ContentFlagItem {
+  id: number;
+  reporter_id: number;
+  reporter_name: string;
+  content_type: string;
+  content_id: number;
+  content_snippet: string;
+  reason: string;
+  status: 'pending' | 'reviewed' | 'dismissed';
+  action_taken?: string;
+  reviewed_by_name?: string;
+  reviewed_at?: string;
+  created_at: string;
+}
+
+export interface ModerationAuditLogItem {
+  id: number;
+  actor_id: number;
+  actor_name: string;
+  action: string;
+  target_type: string;
+  target_id: number;
+  note?: string;
+  created_at: string;
+}
+
+
