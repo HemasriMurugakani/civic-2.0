@@ -121,6 +121,8 @@ def test_persistent_community_votes(db_session):
         ward_id=ward.id,
         title="Pothole vote test",
         description="Testing persistent community votes",
+        latitude=ward.centroid_lat,
+        longitude=ward.centroid_lng,
         status=ComplaintStatus.SUBMITTED,
         final_priority=ComplaintPriority.MEDIUM,
         sla_deadline=datetime.utcnow() + timedelta(days=2),

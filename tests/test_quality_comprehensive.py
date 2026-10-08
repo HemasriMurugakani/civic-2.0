@@ -141,6 +141,10 @@ def test_points_ledger_idempotency_and_reversal(db: Session, quality_users):
     assert rev_entry2.id == rev_entry1.id
     assert service.get_user_score(citizen.id) == initial_score - 25
 
+    # Clean up test ledger entries to prevent orphaned test records
+    db.query(PointsLedger).filter(PointsLedger.source_id == source_id).delete()
+    db.commit()
+
 
 # ----------------------------------------------------------------------
 # 2. Badge Rules & Evaluation

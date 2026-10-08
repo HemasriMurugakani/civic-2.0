@@ -542,12 +542,16 @@ class MetricsService:
 
     def get_category_breakdown(
         self,
-        user: Optional[User],
+        user: Optional[User] = None,
         department_id: Optional[int] = None,
-        days: int = 30,
+        days: Optional[int] = 30,
     ) -> List[Dict[str, Any]]:
-        since = datetime.utcnow() - timedelta(days=days)
+        since = datetime.utcnow() - timedelta(days=days) if days else None
         target_dept = user.department_id if (user and user.role == UserRole.DEPT_ADMIN) else department_id
+
+        join_cond = Complaint.category_id == ComplaintCategory.id
+        if since:
+            join_cond = and_(join_cond, Complaint.created_at >= since)
 
         query = (
             self.db.query(
@@ -558,7 +562,7 @@ class MetricsService:
                 func.count(case((Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]), 1))).label("resolved_count"),
                 func.count(case((Complaint.escalation_level > 0, 1))).label("breached_count"),
             )
-            .outerjoin(Complaint, and_(Complaint.category_id == ComplaintCategory.id, Complaint.created_at >= since))
+            .outerjoin(Complaint, join_cond)
             .group_by(ComplaintCategory.id, ComplaintCategory.name_en, ComplaintCategory.name_ta)
         )
 
@@ -570,16 +574,18 @@ class MetricsService:
         result = []
         for r in rows:
             # Dynamically compute average resolution hours for this category
-            dur_rows = (
+            dur_q = (
                 self.db.query(Complaint.created_at, Complaint.resolved_at)
                 .filter(
                     Complaint.category_id == r.id,
-                    Complaint.created_at >= since,
                     Complaint.resolved_at.isnot(None),
                     Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]),
                 )
-                .all()
             )
+            if since:
+                dur_q = dur_q.filter(Complaint.created_at >= since)
+            dur_rows = dur_q.all()
+
             if dur_rows:
                 durs = [(x.resolved_at - x.created_at).total_seconds() / 3600.0 for x in dur_rows if x.resolved_at >= x.created_at]
                 avg_hrs = round(sum(durs) / len(durs), 1) if durs else 0.0
@@ -606,9 +612,9 @@ class MetricsService:
         self,
         user: Optional[User] = None,
         department_id: Optional[int] = None,
-        days: int = 60,
+        days: Optional[int] = 60,
     ) -> List[Dict[str, Any]]:
-        since = datetime.utcnow() - timedelta(days=days)
+        since = datetime.utcnow() - timedelta(days=days) if days else None
         target_dept = user.department_id if (user and user.role == UserRole.DEPT_ADMIN) else department_id
 
         wards = self.db.query(Ward).filter(Ward.is_active == True).all()
@@ -616,10 +622,9 @@ class MetricsService:
         res = []
 
         for ward in wards:
-            wq = self.db.query(Complaint).filter(
-                Complaint.ward_id == ward.id,
-                Complaint.created_at >= since,
-            )
+            wq = self.db.query(Complaint).filter(Complaint.ward_id == ward.id)
+            if since:
+                wq = wq.filter(Complaint.created_at >= since)
             if target_dept:
                 wq = wq.join(ComplaintCategory).filter(ComplaintCategory.department_id == target_dept)
 
@@ -754,19 +759,21 @@ class MetricsService:
     # 8. DEPARTMENT LEADERBOARD (Dynamic Real Metrics)
     # =========================================================================
 
-    def get_department_leaderboard(self, days: int = 90) -> List[Dict[str, Any]]:
+    def get_department_leaderboard(self, days: Optional[int] = 90) -> List[Dict[str, Any]]:
         departments = self.db.query(Department).filter(Department.is_active == True).all()
         now = datetime.utcnow()
-        since = now - timedelta(days=days)
+        since = now - timedelta(days=days) if days else None
         result = []
 
         for d in departments:
-            comps = (
+            q = (
                 self.db.query(Complaint)
                 .join(ComplaintCategory, ComplaintCategory.id == Complaint.category_id)
-                .filter(ComplaintCategory.department_id == d.id, Complaint.created_at >= since)
-                .all()
+                .filter(ComplaintCategory.department_id == d.id)
             )
+            if since:
+                q = q.filter(Complaint.created_at >= since)
+            comps = q.all()
             total = len(comps)
             resolved = sum(1 for c in comps if c.status in [ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED])
             verified = sum(1 for c in comps if c.status == ComplaintStatus.CITIZEN_VERIFIED)

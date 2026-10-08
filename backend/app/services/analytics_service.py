@@ -31,9 +31,9 @@ class AnalyticsService:
 
     def get_category_breakdown(
         self,
-        user: User,
+        user: Optional[User] = None,
         department_id: Optional[int] = None,
-        days: int = 30,
+        days: Optional[int] = 30,
     ) -> List[Dict[str, Any]]:
         return self.metrics.get_category_breakdown(
             user=user,
@@ -43,9 +43,9 @@ class AnalyticsService:
 
     def get_ward_hotspots(
         self,
-        user: User,
+        user: Optional[User] = None,
         department_id: Optional[int] = None,
-        days: int = 60,
+        days: Optional[int] = 60,
     ) -> List[Dict[str, Any]]:
         return self.metrics.get_ward_hotspots(
             user=user,
@@ -55,7 +55,7 @@ class AnalyticsService:
 
     def get_officer_workload(
         self,
-        user: User,
+        user: Optional[User] = None,
         department_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
         return self.metrics.get_officer_workload(
@@ -65,7 +65,7 @@ class AnalyticsService:
 
     def get_daily_trends(
         self,
-        user: User,
+        user: Optional[User] = None,
         days: int = 14,
         department_id: Optional[int] = None,
     ) -> List[Dict[str, Any]]:
@@ -75,5 +75,5 @@ class AnalyticsService:
             department_id=department_id,
         )
 
-    def get_department_leaderboard(self, days: int = 90) -> List[Dict[str, Any]]:
+    def get_department_leaderboard(self, days: Optional[int] = 90) -> List[Dict[str, Any]]:
         return self.metrics.get_department_leaderboard(days=days)

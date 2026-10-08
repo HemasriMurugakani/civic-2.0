@@ -141,6 +141,11 @@ class GamificationService:
         if pts_to_award <= 0:
             return None
 
+        # Ensure user pseudonym exists for privacy and leaderboard consistency
+        user_obj = self.db.query(User).filter(User.id == user_id).first()
+        if user_obj and (not user_obj.public_id or not user_obj.public_display_name):
+            self.ensure_user_pseudonym(user_obj)
+
         # 3. Insert into append-only ledger
         entry = PointsLedger(
             user_id=user_id,
@@ -448,6 +453,7 @@ class GamificationService:
 
             items.append({
                 "rank": rank_idx,
+                "user_id": uid,
                 "public_id": pub_id or f"cit-{uid:04d}",
                 "display_name": disp_name or f"Citizen #{uid:04d}",
                 "score": score_val,

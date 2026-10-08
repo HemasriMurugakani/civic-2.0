@@ -91,6 +91,9 @@ class ComplaintService:
         sla_hours = category.sla_hours or 48
         sla_deadline = now + timedelta(hours=sla_hours)
 
+        lat = latitude if latitude is not None else (ward.centroid_lat if ward else 13.0827)
+        lng = longitude if longitude is not None else (ward.centroid_lng if ward else 80.2707)
+
         complaint = Complaint(
             reference_no=reference_no,
             citizen_id=citizen.id,
@@ -98,8 +101,8 @@ class ComplaintService:
             ward_id=ward_id,
             title=title,
             description=description,
-            latitude=latitude,
-            longitude=longitude,
+            latitude=lat,
+            longitude=lng,
             address_text=address_text,
             channel=channel,
             status=ComplaintStatus.SUBMITTED,

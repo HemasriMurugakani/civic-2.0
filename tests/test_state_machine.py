@@ -1,6 +1,6 @@
 import pytest
 from fastapi import HTTPException
-from app.models.entities import ComplaintStatus, UserRole, Complaint
+from app.models.entities import ComplaintStatus, UserRole, Complaint, ComplaintCategory, Ward
 from app.services.complaint_service import ComplaintService
 from app.repositories.user_repo import UserRepository
 from app.repositories.master_repo import MasterRepository
@@ -80,8 +80,8 @@ def test_illegal_state_transitions_rejected(db_session):
 
     citizen = user_repo.get_by_email("citizen2@tngov.in")
     officer = user_repo.get_by_email("officer.wat1@tngov.in")
-    category = master_repo.list_categories()[0]
-    ward = master_repo.list_wards()[0]
+    category = db_session.query(ComplaintCategory).filter(ComplaintCategory.department_id == officer.department_id).first()
+    ward = db_session.query(Ward).filter(Ward.id == officer.ward_id).first()
 
     complaint = service.create_complaint(
         citizen=citizen,
