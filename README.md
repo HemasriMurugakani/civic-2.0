@@ -1,25 +1,57 @@
 # NammaTN (நம்ம தமிழ்நாடு)
 
 > **Citizen Grievance Redressal & Transparent Governance Platform**  
-> Government of Tamil Nadu Civic Technology Infrastructure. Built for high trust, rapid bilingual mobile reporting (<2 mins), public community verification, and enforceable SLA accountability across Tamil Nadu constituencies and municipal corporations.
+> Government of Tamil Nadu Civic Technology Infrastructure. Built for high trust, rapid bilingual mobile reporting (<2 mins), public community verification, enforceable SLA accountability, infrastructure transparency, civic education, and community stewardship across Tamil Nadu constituencies and municipal corporations.
 
 ---
 
-## 🏛️ Core Capabilities
+## 🏛️ Comprehensive Feature Capabilities
 
+### 1. Core Grievances & Governance Workflow
 - **Bilingual Experience**: Full English and Tamil (`தமிழ்`) support across public pages, citizen filing, and category taxonomies with Google Noto Sans Tamil & Inter typography.
 - **Canonical 20-Category Civic Filing**: Specialized filing taxonomy (Roads & Potholes, Streetlights, Water Supply, Drainage, Garbage, Public Health, Transport, Animal Menace, etc.) with automated constituency detection, GPS geolocation, and photo evidence.
 - **Public Community Verification Board (`/issues`)**: Transparent public tracking board with district filters, verification votes, dispute reporting, and local representative / MLA / MP accountability.
 - **Official SLA Tracking Pipeline (`/track`)**: Real-time status lookup with live audit progress timeline, SLA compliance chips, and official government accountability guarantees.
-- **Strict Role-Based Access Control (RBAC)**: Repository-level scoping (`ScopedQueryBuilder`) preventing data leaks between citizens, field officers, and department administrators.
+- **Strict Role-Based Access Control (RBAC)**: Repository-level scoping (`ScopedQueryBuilder`) preventing data leaks across four roles: Citizens, Field Officers, Department Administrators, and Government Administrators.
 - **Audited Finite State Machine**: Formal state transitions:
   $$\text{Submitted} \longrightarrow \text{Assigned} \longrightarrow \text{Acknowledged} \longrightarrow \text{In Progress} \longrightarrow \text{Resolved} \longrightarrow \text{Citizen Verified}$$
   $$\text{Resolved} \longrightarrow \text{Reopened} \longrightarrow \text{Assigned}$$
 - **SLA Escalation Engine**: Automated background engine calculating elapsed thresholds ($70\%$ approaching warning, $>100\%$ breach Level 1 to officer & department admin, $>24\text{h}$ breach Level 2 to state admin) with idempotent notification keys.
-- **Interactive Officer Workbench (`/officer`)**: Drag-and-drop Kanban board (@dnd-kit) with live SLA countdown chips and mandatory rectification notes & after-repair photos.
+- **Interactive Officer Workbench (`/officer`)**: Drag-and-drop Kanban board (`@dnd-kit`) with live SLA countdown chips and mandatory rectification notes & after-repair photos.
 - **Department & State Analytics (`/department`, `/governance`)**: SQL aggregations, EXPLAIN ANALYZE-optimized composite indexing, 14-day resolution trends, ward hotspot rankings, and officer workload rebalancing.
 - **Interactive GIS Map (`/gis`)**: Leaflet + OpenStreetMap spatial analytics displaying priority pins, ward grievance density circles, and zone drawers.
-- **Design System Showroom (`/dev/ui`)**: Explore all design system primitives and components.
+
+### 2. Gamification Core & Reputation Engine (Milestone F1) (`/leaderboard`)
+- **Append-Only Points Ledger**: Points earned with idempotency keys and automatic signed reversal upon content moderation or dispute resolution.
+- **Level Thresholds (L1 - L5)**: Civic Novice ($0-99$), Ward Contributor ($100-299$), Community Champion ($300-699$), Civic Leader ($700-1499$), and Governance Luminary ($1500+$).
+- **Badge Catalog**: Automated evaluation for milestones (First Grievance, Community Verifier, Spot Caretaker, Certified Citizen, Campaign Hero).
+- **Competitive Leaderboards**: Filterable by Statewide, District, and Monthly periods with strict privacy opt-out toggle.
+
+### 3. Infrastructure Project Tracker & Open Data Sync (Milestone F2) (`/projects`)
+- **Public Works Monitoring**: Real-time capital expenditure tracking, contractor transparency, physical completion progress, and delay flagging.
+- **Open Data Sync Adapter**: Bi-directional ingestion adapter with conflict resolution that protects local municipal modifications (`ProjectSource.LOCAL_TRACKING`).
+- **Community Engagement**: Citizens follow projects for milestone alerts, submit transparency ratings (1-5 stars), and review progress photos.
+
+### 4. Community Hub & Action Groups (Milestone F3) (`/community`)
+- **Neighborhood Action Groups**: Public and closed citizen collectives organized around ward problems and civic causes with member roles and dedicated forums.
+- **Civic Discussion Threads**: Community problem-solving forum with upvoting, threaded replies, and "Best Answer" recognition.
+- **Content Safety & Moderation Queue**: Regex keyword filters and staff moderation dashboard with audit logging (`moderation_audit_logs`) and points clawback.
+
+### 5. Civic Education Academy & PDF Certificates (Milestone F4) (`/education`)
+- **State-Accredited Curriculum**: Interactive modules on Solid Waste Management, Grievance Rights, Ward Sabhas, RTI Act, and Water Conservation.
+- **Knowledge Evaluations**: Formative quizzes with immediate explanations and 70% passing criterion.
+- **Official PDF Certificates**: Dynamically rendered high-resolution PDF certificates generated with ReportLab.
+- **Public Verification (`/verify/:code`)**: QR-code ready public verification portal for validating authenticity of issued certificates.
+
+### 6. Adopt-a-Spot Public Space Stewardship (Milestone F5) (`/spots`)
+- **Civic Space Stewardship**: Citizens adopt parks, bus stops, water bodies, and school buffers with actionable care pledges.
+- **Periodic Check-ins**: Submit photo proof and completed maintenance checklists to earn civic points (+15 pts).
+- **Cadence Scheduler**: APScheduler jobs monitor check-in cadences, emit reminders, and auto-release spots after 3 missed cycles.
+
+### 7. Seasonal Civic Campaigns (Milestone F6) (`/campaigns`)
+- **Target-Driven Campaigns**: Monsoon Preparedness, Swachh Ward Challenge, Water Body Rejuvenation, and Green Corridor Drive.
+- **Milestone Task Progress**: Citizens join campaigns, execute designated tasks, and earn bonus points and exclusive badges.
+- **Automated Lifecycle Transitions**: Time-based background transitions (`draft -> scheduled -> active -> completed`).
 
 ---
 
@@ -45,7 +77,7 @@ source backend/venv/bin/activate
 # Install backend dependencies
 pip install -r backend/requirements.txt
 
-# Run migrations & seed realistic Tamil Nadu grievances
+# Run migrations & seed realistic Tamil Nadu data (complaints, projects, groups, spots, campaigns)
 PYTHONPATH=backend alembic upgrade head
 PYTHONPATH=backend python -m app.scripts.seed --reset
 
@@ -71,9 +103,9 @@ The login page provides **1-click quick evaluation buttons** to switch roles ins
 
 | Role | Email / Username | Mobile Number | Department / Scope |
 | :--- | :--- | :--- | :--- |
-| **Government Admin** | `govadmin@tngov.in` | `9800000001` | State Secretariat (Global Visibility) |
+| **Government Admin** | `govadmin@tngov.in` | `9800000001` | State Secretariat (Global Oversight) |
 | **Dept Admin (Sanitation)** | `admin.sanitation@tngov.in` | `9800000010` | Solid Waste Management |
-| **Dept Admin (Water)** | `admin.water@tngov.in` | `9800000020` | Water Supply & Sewerage |
+| **Dept Admin (Water)** | `admin.water@tngov.in` | `9800000020` | Water Supply & Sewerage Board |
 | **Dept Admin (Roads)** | `admin.roads@tngov.in` | `9800000030` | Roads & Stormwater Drains |
 | **Nodal Officer** | `officer.san1@tngov.in` | `9810000011` | Ward 51 (Royapuram) |
 | **Nodal Officer** | `officer.wat1@tngov.in` | `9810000021` | Ward 102 (Anna Nagar) |
@@ -82,19 +114,40 @@ The login page provides **1-click quick evaluation buttons** to switch roles ins
 
 ---
 
-## 🧪 Automated Testing
+## 🧪 Quality Suite & Automated Testing (Milestone F7)
 
-Run the full backend test suite covering RBAC scoping, state machine transitions, frozen-clock SLA engines, and end-to-end lifecycle verification:
-
+### 1. Pytest Backend Suite (58 Tests Passing)
+Run the complete unit and integration test suite:
 ```bash
 PYTHONPATH=backend ./backend/venv/bin/pytest tests/ -v
 ```
 
-All 9 test suites pass with 100% assertions:
-- `tests/test_rbac.py`: Proves cross-role and cross-department queries return `None` / `404`.
-- `tests/test_state_machine.py`: Rejects illegal transitions and validates mandatory resolution notes.
-- `tests/test_sla_engine.py`: Tests time progression with `freezegun` and ensures idempotent notification emission.
-- `tests/test_lifecycle_e2e.py`: Exercises citizen submission $\rightarrow$ auto-dispatch $\rightarrow$ officer resolution $\rightarrow$ citizen verification $\rightarrow$ state analytics telemetry.
+Test coverage includes:
+- `tests/test_quality_comprehensive.py`: Points ledger idempotency & reversals, badge rules, state transitions, open data sync conflict handling, RBAC permissions, community moderation queue, certificate verification.
+- `tests/test_gamification.py`: Points economy, anti-abuse daily caps, leaderboards, level calculation.
+- `tests/test_projects.py`: Project follower lifecycle, open data sync adapter, community transparency ratings.
+- `tests/test_community.py`: Action groups, memberships, forum posts, discussion replies, best answers, flag queue.
+- `tests/test_education.py`: Modules, lessons, quiz evaluation, ReportLab PDF generation, verification endpoint.
+- `tests/test_spots.py`: Spot adoption, care check-ins, auto-release scheduler, photo submission.
+- `tests/test_campaigns.py`: Seasonal campaigns, task progress tracking, participant metrics, state transitions.
+- `tests/test_rbac.py`: Strict repository scoping, multi-department boundaries, forbidden actions.
+- `tests/test_state_machine.py`: Legal grievance lifecycle and rejection of illegal state transitions.
+- `tests/test_sla_engine.py`: Frozen-clock SLA breach escalation, warning triggers, notification idempotency.
+- `tests/test_lifecycle_e2e.py`: Full end-to-end citizen submission to officer resolution lifecycle.
+
+### 2. Playwright E2E User Journeys (5/5 Passing)
+Run the Playwright end-to-end test suite against Chromium:
+```bash
+cd frontend
+npx playwright test
+```
+
+Tested journeys:
+1. **Citizen Group & Post**: Citizen joins a neighborhood action group and posts a topic in the community forum.
+2. **Citizen Points & Badges**: Citizen earns civic points and reviews badge progression on the gamification leaderboard.
+3. **Citizen Education & Certificate**: Citizen reviews module syllabus, tests evaluation, and verifies an accredited certificate at `/verify/:code`.
+4. **Adopt-a-Spot Stewardship**: Citizen explores adoptable spaces, reviews stewardship commitments, and adopts a spot.
+5. **Infrastructure Follower**: Citizen follows a capital infrastructure project and monitors real-time notification alerts.
 
 ---
 
@@ -105,27 +158,27 @@ civic-2.0/
 ├── backend/
 │   ├── alembic/                # Database migrations
 │   ├── app/
-│   │   ├── api/v1/             # FastAPI routers (auth, complaints, public, analytics, master, uploads)
+│   │   ├── api/v1/             # FastAPI routers (auth, complaints, projects, community, education, spots, campaigns)
 │   │   ├── core/               # Database engine, security (JWT/bcrypt), configuration
 │   │   ├── models/             # SQLAlchemy 2.0 entities, enums, composite indexes
 │   │   ├── repositories/       # Scoped query builders enforcing RBAC
 │   │   ├── schemas/            # Pydantic v2 validation contracts
-│   │   ├── scripts/            # Idempotent seed script
-│   │   └── services/           # State machine, SLA engine, storage, AI gateway
+│   │   ├── scripts/            # Seed data (realistic Tamil Nadu grievances, projects, spots)
+│   │   └── services/           # State machine, gamification, SLA engine, scheduler, PDF generator
 │   └── uploads/                # Local file storage (S3-ready abstraction)
 ├── frontend/
+│   ├── e2e/                    # Playwright end-to-end test suite
 │   ├── src/
 │   │   ├── components/         # StatusBadge, SLAChip, StatCard, Timeline, DataTable, AppLayout
 │   │   ├── i18n/               # Bilingual English / Tamil localization
 │   │   ├── lib/                # Auth provider, API client, TypeScript types
-│   │   └── pages/              # Landing, Report, Issues, Track, Dashboard, Kanban, GIS, Admin, /dev/ui
+│   │   └── pages/              # Landing, Report, Issues, Projects, Community, Education, Spots, Campaigns
+│   └── playwright.config.ts    # Playwright configuration
 ├── docs/
 │   ├── API.md                  # Comprehensive REST endpoint specification
-│   ├── DECISIONS.md            # Architecture rationale & EXPLAIN ANALYZE findings
+│   ├── DECISIONS.md            # Architecture rationale, gamification formula, moderation rules, EXPLAIN ANALYZE
 │   └── ER_diagram.md           # Database Entity-Relationship diagram in Mermaid
-├── ai/
-│   └── README.md               # AI model roadmap and future data contracts
-└── tests/                      # Pytest RBAC, state machine, SLA, and E2E lifecycle tests
+└── tests/                      # Pytest quality and integration test suite
 ```
 
 ---

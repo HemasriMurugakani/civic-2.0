@@ -47,7 +47,8 @@ export const GroupDetailPage: React.FC = () => {
 
   const handleJoinLeave = async () => {
     if (!group) return;
-    if (!user) {
+    const token = localStorage.getItem('access_token');
+    if (!token && !user) {
       toast.error('Please log in first');
       navigate('/login');
       return;
@@ -61,7 +62,7 @@ export const GroupDetailPage: React.FC = () => {
         await api.joinGroup(group.id);
         toast.success('Joined group successfully');
       }
-      fetchGroup();
+      await fetchGroup();
     } catch (err: any) {
       toast.error(err.message || 'Action failed');
     }
@@ -70,7 +71,8 @@ export const GroupDetailPage: React.FC = () => {
   const handleCreatePost = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!group) return;
-    if (!user) {
+    const token = localStorage.getItem('access_token');
+    if (!token && !user) {
       toast.error('Please log in to post');
       navigate('/login');
       return;

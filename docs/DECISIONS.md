@@ -149,3 +149,127 @@ Execution Time: 4.450 ms
 2. **Filtering Performance**: The composite index `idx_complaint_ward_created (ward_id, created_at)` and single index `ix_complaints_created_at` ensure that as complaint volume scales past 50,000 records, the query seamlessly shifts from bitmap index scan to indexed index-only scans.
 3. **In-Process Cache**: Backing the endpoint with `TTLCache(maxsize=500, ttl=300)` avoids running this query more than once per 5 minutes per user scope, reducing database CPU load to near zero during traffic spikes.
 
+---
+
+## 9. Gamification Points Economy & Formulas
+
+### Context & Anti-Abuse Requirements
+Civic gamification must reward civic stewardship without incentivizing spam, illegitimate submissions, or malicious leaderboard gaming.
+
+### Decision & Implementation
+1. **Append-Only Points Ledger (`points_ledger`)**:
+   - User scores are strictly computed via SQL sum aggregations:
+     $$\text{Total Score} = \sum \text{points\_ledger.points}$$
+   - **Signed Deltas**: Points can be positive (earned) or negative (reversals).
+   - **Idempotency**: Prevent duplicate point awards via unique composite logic on `(user_id, source_type, source_id, reason)`.
+   - **Reversal Flow**: When flagged or abusive content is hidden by a moderator, `reverse_points()` issues an offsetting negative entry (`points = -N`) with reason `content_moderated_abuse`.
+
+2. **Point Value Distribution**:
+
+| Action | Points Awarded | Daily Cap / Constraints |
+| :--- | :--- | :--- |
+| File verified civic grievance | +25 | Max 4 per day (100 pts) |
+| Community verification vote | +5 | Max 10 per day (50 pts) |
+| Start discussion thread | +15 | Max 2 per day (30 pts) |
+| Helpful reply marked "Best Answer" | +30 | Uncapped (quality merit) |
+| Join neighborhood action group | +10 | One-time per group |
+| Post in neighborhood action group | +15 | Max 3 per day (45 pts) |
+| Complete civic education module | +50 | One-time per module |
+| 100% quiz assessment bonus | +25 | One-time per module |
+| Adopt a public spot (initial pledge) | +100 | Max 2 active spots |
+| Log verified spot care check-in | +15 | Weekly cadence limit |
+| Review infrastructure project | +10 | One-time per project |
+| Complete seasonal campaign task | +20 to +50 | Bound to active campaign |
+
+3. **Level Progression Thresholds**:
+   Levels are calculated deterministically from cumulative points earned:
+   - **Level 1 (Civic Novice)**: $0 - 99\text{ pts}$ (Initial onboarding)
+   - **Level 2 (Ward Contributor)**: $100 - 299\text{ pts}$ (Active grievance reporting)
+   - **Level 3 (Community Champion)**: $300 - 699\text{ pts}$ (Regular group discussion & spot stewardship)
+   - **Level 4 (Civic Leader)**: $700 - 1,499\text{ pts}$ (Multi-module certified & campaign completions)
+   - **Level 5 (Governance Luminary)**: $1,500+\text{ pts}$ (Top-tier verified civic leadership)
+
+4. **Anti-Abuse Daily Cap**:
+   A maximum routine daily earning cap of **200 points** is enforced via `check_daily_cap=True`, preventing bulk automated submission scripts from distorting competitive rankings.
+
+---
+
+## 10. "Active Citizen" Metric Definition
+
+### Formula & Technical Specification
+A citizen is formally categorized as an **"Active Citizen"** in state and department telemetry if they have performed at least one verified civic engagement action within the rolling **30-day window**:
+
+$$\text{IsActive}(u) = \exists e \in \text{PointsLedger} \mid e.\text{user\_id} = u.\text{id} \land e.\text{created\_at} \ge (\text{NOW}() - 30\text{ days})$$
+
+Qualifying actions include:
+- Filing a grievance or verifying a neighbor's grievance
+- Completing an educational lesson or passing an evaluation quiz
+- Logging a verified spot maintenance check-in
+- Posting or commenting in a local neighborhood action group
+- Making progress on an active seasonal campaign task
+
+This metric is evaluated dynamically in SQL without brittle static boolean flags.
+
+---
+
+## 11. Open Data Sync Policy & Conflict Resolution
+
+### Context & Ingestion Architecture
+The platform ingests capital infrastructure records from the Government Open Data portal (PWD, CMRL, TWAD, Smart City). Municipal engineers and local nodal officers also make live field progress updates and observations.
+
+### Sync Policy & Conflict Resolution Rules:
+1. **Upsert Matching**:
+   Incoming external records match existing projects by `external_id`. If non-existent, a new project record is created with `source = GOVERNMENT_DATA`.
+2. **Local Modification Protection**:
+   When a nodal officer or department admin edits a project locally, its source transitions to `ProjectSource.LOCAL_TRACKING`.
+3. **Conflict Detection**:
+   During subsequent automated syncs:
+   - If `project.source == ProjectSource.LOCAL_TRACKING`, the sync adapter detects a conflict.
+   - Local attributes (`title`, `contractor`, `budget_amount`, `progress_percent`) are **never overwritten**.
+   - The conflict is recorded in `project_sync_logs` with status `conflict_detected` for administrative review.
+4. **Community Engagement Preservation**:
+   Community follower relationships (`project_followers`), transparency ratings (`project_ratings`), and citizen comments are always preserved across all sync passes.
+
+---
+
+## 12. Content Safety & Community Moderation Rules
+
+### Moderation Pipeline:
+1. **Automated Content Filtering**:
+   Regex pattern inspection guards titles and body text against offensive profanities, hate speech, spam phone numbers, and unsolicited advertising.
+2. **Citizen Flagging Workflow**:
+   Citizens can flag threads, replies, group posts, and comments (`POST /api/v1/community/flags`). Flags enter the queue in `pending` status.
+3. **Staff Moderation Queue (RBAC)**:
+   - Nodal Officers, Department Admins, and Government Admins can inspect the queue (`GET /api/v1/community/flags?status=pending`).
+   - Resolving actions (`POST /api/v1/community/flags/{id}/action`):
+     - **`hide`**: Soft-deletes target content (`is_hidden = True`) and triggers gamification point reversal.
+     - **`warn`**: Marks reviewed with user warning.
+     - **`dismiss`**: Dismisses false-positive flags.
+4. **Immutable Audit Trail (`moderation_audit_logs`)**:
+   Every moderation action records `actor_id`, `action`, `target_type`, `target_id`, `note`, and timestamp for transparency and accountability.
+
+---
+
+## 13. Privacy & Pseudonym Architecture
+
+### Guarantees & Privacy Enforcement:
+1. **Zero PII Leaks**:
+   - Mobile numbers are masked in all public and peer views: `_mask_mobile("9840000001") -> "+91 98*** **001"`.
+   - Citizen emails and password hashes are never returned by community, project, or leaderboard endpoints.
+2. **Permanent Public Pseudonyms**:
+   - Each registered citizen receives a unique, non-identifying `public_id` (e.g. `cit-98400001-a7b2`).
+   - Citizens can configure a custom `public_display_name` (e.g. "Royapuram Resident") to protect real identities.
+3. **Leaderboard Privacy Opt-Out**:
+   - Citizens can toggle `leaderboard_opt_out = True` via privacy preferences.
+   - When opted out, their profile is excluded from public leaderboards while retaining personal score accumulation, badges, and learning certificates.
+
+---
+
+## 14. Background Jobs & APScheduler Architecture
+
+### Automation Responsibilities:
+- **SLA Monitoring**: Runs every 10 minutes to detect warning/breach escalation thresholds.
+- **Spot Care Cadence Checks**: Runs every 12 hours. Warns stewards of missed cycles and auto-releases abandoned spots if 3 consecutive check-ins are missed.
+- **Seasonal Campaign Transitions**: Runs hourly to update lifecycle states (`scheduled -> active -> completed`).
+- **Idempotency Guarantee**: All automated tasks execute inside transactional contexts with deterministic logging.
+
