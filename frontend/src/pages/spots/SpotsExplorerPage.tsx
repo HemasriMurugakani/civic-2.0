@@ -241,7 +241,7 @@ export const SpotsExplorerPage: React.FC = () => {
   return (
     <div className="space-y-6 pb-16">
       <PageHeader
-        title="Adopt-a-Spot: Community Stewardship"
+        title="Adopt-a-Spot: Champion Your Local Public Spaces"
         titleTa="நம்ம ஊர் · நம்ம இடம் · தூய்மைப் பொறுப்பு"
         subtitle="Take stewardship of neighborhood parks, transit shelters, ponds, and public corners. Make a care commitment, log periodic check-ins, and earn Civic Points."
         badge={
