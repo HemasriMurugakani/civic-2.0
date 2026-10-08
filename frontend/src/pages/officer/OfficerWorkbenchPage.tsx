@@ -6,13 +6,21 @@ import {
 } from '@dnd-kit/core';
 import {
   Kanban, Filter, CheckCircle, Clock, MapPin, Phone,
-  Sparkles, AlertTriangle, ArrowRight, ShieldCheck, ChevronRight
+  Sparkles, AlertTriangle, ArrowRight, ShieldCheck, ChevronRight, X
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { ComplaintItem, ComplaintStatus, ComplaintPriority } from '@/lib/types';
-import { StatusBadge, PriorityDot, SLAChip } from '@/components/common/StatusBadges';
-import { PageHeader, FileDropzone } from '@/components/common/CommonUi';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { PriorityDot, SLAChip } from '@/components/common/StatusBadges';
+import { FileDropzone } from '@/components/common/CommonUi';
+import {
+  PageHeader,
+  Card,
+  Badge,
+  Button,
+  Input,
+  Select,
+  Modal
+} from '@/components/ui';
 
 const KANBAN_COLUMNS: { id: ComplaintStatus; title: string; color: string }[] = [
   { id: 'assigned', title: 'Assigned', color: 'border-blue-500' },
@@ -77,15 +85,12 @@ export const OfficerWorkbenchPage: React.FC = () => {
     const currentComplaint = complaints.find((c) => c.id === complaintId);
     if (!currentComplaint || currentComplaint.status === targetStatus) return;
 
-    // If target is resolved, open resolve dialog because note is mandatory!
     if (targetStatus === 'resolved') {
       setResolveComplaint(currentComplaint);
       return;
     }
 
-    // Direct transition for other legal steps
     try {
-      // Optimistic update
       setComplaints((prev) =>
         prev.map((c) => (c.id === complaintId ? { ...c, status: targetStatus } : c))
       );
@@ -139,7 +144,6 @@ export const OfficerWorkbenchPage: React.FC = () => {
     }
   };
 
-  // Filtered
   const filteredComplaints = complaints.filter((c) => {
     if (priorityFilter !== 'all' && c.final_priority !== priorityFilter) return false;
     if (searchFilter) {
@@ -154,36 +158,43 @@ export const OfficerWorkbenchPage: React.FC = () => {
   });
 
   return (
-    <div className="space-y-6 font-sans">
+    <div className="space-y-6">
       <PageHeader
-        title={t('officer.workbenchTitle')}
-        subtitle={t('officer.workbenchSubtitle')}
-        action={
+        title={t('officer.workbenchTitle') || 'Officer Workbench'}
+        subtitle={t('officer.workbenchSubtitle') || 'Manage and advance assigned citizen complaints across their lifecycle.'}
+        badge={
+          <Badge variant="info">
+            Field Officer Operations
+          </Badge>
+        }
+        actions={
           <div className="flex flex-wrap items-center gap-2">
-            <input
+            <Input
               type="text"
               value={searchFilter}
               onChange={(e) => setSearchFilter(e.target.value)}
-              placeholder="Search reference or title..."
-              className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-1.5 text-xs text-stone-800 dark:text-white"
+              placeholder="Search reference, title, ward..."
+              className="w-48 sm:w-60"
             />
-            <select
+            <Select
               value={priorityFilter}
               onChange={(e) => setPriorityFilter(e.target.value)}
-              className="rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 px-3 py-1.5 text-xs text-stone-800 dark:text-white"
-            >
-              <option value="all">All Priorities</option>
-              <option value="critical">Critical Only</option>
-              <option value="high">High</option>
-              <option value="medium">Medium</option>
-              <option value="low">Low</option>
-            </select>
+              options={[
+                { value: 'all', label: 'All Priorities' },
+                { value: 'critical', label: 'Critical Only' },
+                { value: 'high', label: 'High Priority' },
+                { value: 'medium', label: 'Medium Priority' },
+                { value: 'low', label: 'Low Priority' },
+              ]}
+              className="w-40"
+            />
           </div>
         }
       />
 
-      <p className="text-xs text-stone-500 dark:text-stone-400">
-        💡 {t('officer.dragHint')}
+      <p className="text-xs text-foreground-muted flex items-center gap-1.5">
+        <span>💡</span>
+        <span>{t('officer.dragHint') || 'Drag and drop cards between status columns to update status, or use the Advance button.'}</span>
       </p>
 
       {/* Kanban Board with Drag and Drop */}
@@ -201,15 +212,15 @@ export const OfficerWorkbenchPage: React.FC = () => {
               <div
                 key={column.id}
                 id={column.id}
-                className={`rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/40 p-4 space-y-3 min-h-[500px] flex flex-col`}
+                className="rounded-2xl border border-border bg-surface-muted/30 p-3.5 space-y-3 min-h-[500px] flex flex-col"
               >
                 <div className={`flex items-center justify-between border-t-4 pt-2 ${column.color}`}>
-                  <h3 className="text-xs font-bold uppercase tracking-wider text-stone-900 dark:text-white">
+                  <h3 className="text-xs font-bold uppercase tracking-wider text-foreground">
                     {column.title}
                   </h3>
-                  <span className="rounded-full bg-stone-200 dark:bg-stone-800 px-2 py-0.5 text-[11px] font-bold text-stone-700 dark:text-stone-300">
+                  <Badge variant="secondary" size="sm">
                     {columnItems.length}
-                  </span>
+                  </Badge>
                 </div>
 
                 <div className="flex-1 space-y-3">
@@ -218,7 +229,6 @@ export const OfficerWorkbenchPage: React.FC = () => {
                       ? c.category_name_ta || c.category_name_en
                       : c.category_name_en;
 
-                    // Next Status shortcut
                     const nextStatusMap: Record<ComplaintStatus, ComplaintStatus | null> = {
                       submitted: 'assigned',
                       assigned: 'acknowledged',
@@ -231,13 +241,13 @@ export const OfficerWorkbenchPage: React.FC = () => {
                     const next = nextStatusMap[c.status];
 
                     return (
-                      <div
+                      <Card
                         key={c.id}
                         id={String(c.id)}
-                        className="rounded-xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 shadow-2xs transition hover:shadow-md cursor-grab active:cursor-grabbing space-y-2.5"
+                        className="p-3.5 transition hover:shadow-raised cursor-grab active:cursor-grabbing space-y-2.5"
                       >
                         <div className="flex items-center justify-between gap-1">
-                          <span className="font-mono text-[11px] font-bold text-[#800000] dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-2 py-0.5 rounded">
+                          <span className="font-mono text-[11px] font-bold text-primary bg-primary/10 px-2 py-0.5 rounded-md">
                             {c.reference_no}
                           </span>
                           <PriorityDot priority={c.final_priority} showLabel={false} />
@@ -245,36 +255,38 @@ export const OfficerWorkbenchPage: React.FC = () => {
 
                         <h4
                           onClick={() => setSelectedComplaint(c)}
-                          className="text-xs font-bold text-stone-900 dark:text-white hover:text-[#800000] cursor-pointer line-clamp-2"
+                          className="text-xs font-bold text-foreground hover:text-primary cursor-pointer line-clamp-2"
                         >
                           {c.title}
                         </h4>
 
-                        <div className="flex items-center justify-between text-[11px] text-stone-500">
-                          <span className="truncate max-w-[120px] font-medium text-stone-700 dark:text-stone-300">
+                        <div className="flex items-center justify-between text-[11px] text-foreground-muted">
+                          <span className="truncate max-w-[120px] font-medium text-foreground">
                             {categoryName}
                           </span>
                           <span>{c.ward_name}</span>
                         </div>
 
-                        <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between gap-2">
+                        <div className="pt-2 border-t border-border flex items-center justify-between gap-2">
                           <SLAChip
                             slaStatus={c.sla_status}
                             remainingHours={c.sla_remaining_hours}
                           />
 
                           {next && (
-                            <button
+                            <Button
                               type="button"
+                              size="sm"
+                              variant="outline"
                               onClick={() => handleAdvanceStatus(c, next)}
-                              className="text-[10px] font-bold text-[#800000] hover:text-[#680000] dark:text-rose-400 dark:hover:text-rose-300 flex items-center gap-0.5 border border-rose-200 dark:border-rose-900 rounded px-1.5 py-0.5 hover:bg-rose-50"
+                              className="text-[10px] h-7 px-2 font-bold"
+                              rightIcon={<ChevronRight className="h-3 w-3" />}
                             >
-                              <span>Advance</span>
-                              <ChevronRight className="h-3 w-3" />
-                            </button>
+                              Advance
+                            </Button>
                           )}
                         </div>
-                      </div>
+                      </Card>
                     );
                   })}
                 </div>
@@ -285,47 +297,48 @@ export const OfficerWorkbenchPage: React.FC = () => {
 
         {activeDragItem && (
           <DragOverlay>
-            <div className="rounded-xl border border-[#800000]/40 bg-white dark:bg-stone-900 p-4 shadow-xl opacity-90 w-64 space-y-2">
-              <span className="font-mono text-xs font-bold text-[#800000] dark:text-rose-400">{activeDragItem.reference_no}</span>
-              <p className="text-xs font-bold text-stone-900 dark:text-white line-clamp-1">{activeDragItem.title}</p>
-            </div>
+            <Card className="border-primary/50 shadow-overlay w-64 space-y-2 p-3.5 opacity-90">
+              <span className="font-mono text-xs font-bold text-primary">{activeDragItem.reference_no}</span>
+              <p className="text-xs font-bold text-foreground line-clamp-1">{activeDragItem.title}</p>
+            </Card>
           </DragOverlay>
         )}
       </DndContext>
 
       {/* Mandatory Resolve Modal */}
       {resolveComplaint && (
-        <ConfirmDialog
+        <Modal
           isOpen={!!resolveComplaint}
-          title={t('officer.resolveModalTitle')}
-          description={`Completing grievance ${resolveComplaint.reference_no}. A field rectification note is required pursuant to citizen service guarantee.`}
-          confirmLabel={t('officer.confirmResolve')}
-          loading={resolving}
-          onConfirm={handleConfirmResolve}
-          onCancel={() => setResolveComplaint(null)}
+          onClose={() => setResolveComplaint(null)}
+          title={t('officer.resolveModalTitle') || 'Field Rectification & Resolution'}
+          size="md"
         >
           <div className="space-y-4">
+            <p className="text-xs text-foreground-muted">
+              Completing grievance <strong className="font-mono text-primary">{resolveComplaint.reference_no}</strong>. A field rectification note is required pursuant to citizen service guarantee.
+            </p>
+
             {resolveError && (
-              <p className="text-xs text-rose-600 bg-rose-50 p-2 rounded-lg">{resolveError}</p>
+              <p className="text-xs text-danger bg-danger/10 border border-danger/20 p-2.5 rounded-lg">{resolveError}</p>
             )}
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                {t('officer.resolveNoteLabel')} <span className="text-rose-500">*</span>
+              <label className="block text-xs font-bold text-foreground mb-1.5">
+                {t('officer.resolveNoteLabel') || 'Rectification Action Note'} <span className="text-danger">*</span>
               </label>
               <textarea
                 required
                 rows={3}
                 value={resolveNote}
                 onChange={(e) => setResolveNote(e.target.value)}
-                placeholder={t('officer.resolveNotePlaceholder')}
-                className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 p-2.5 text-xs text-stone-900 dark:text-white"
+                placeholder={t('officer.resolveNotePlaceholder') || 'Detail work completed, contractor assigned, or materials deployed...'}
+                className="w-full rounded-xl border border-border bg-surface px-3 py-2 text-xs text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               />
             </div>
 
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                {t('officer.uploadAfterPhoto')}
+              <label className="block text-xs font-bold text-foreground mb-1.5">
+                {t('officer.uploadAfterPhoto') || 'After-photo evidence'}
               </label>
               <FileDropzone
                 selectedFile={afterPhoto}
@@ -333,79 +346,88 @@ export const OfficerWorkbenchPage: React.FC = () => {
                 onClear={() => setAfterPhoto(null)}
               />
             </div>
+
+            <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setResolveComplaint(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                isLoading={resolving}
+                onClick={handleConfirmResolve}
+                leftIcon={<CheckCircle className="h-4 w-4" />}
+              >
+                {t('officer.confirmResolve') || 'Mark Resolved'}
+              </Button>
+            </div>
           </div>
-        </ConfirmDialog>
+        </Modal>
       )}
 
-      {/* Officer Detail & AI Placeholders Drawer / Modal */}
+      {/* Officer Detail & AI Insights Modal */}
       {selectedComplaint && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs">
-          <div className="max-w-xl w-full rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 space-y-5 shadow-2xl max-h-[90vh] overflow-y-auto">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <div>
-                <span className="font-mono text-xs font-bold text-[#800000] dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-2.5 py-0.5 rounded">
-                  {selectedComplaint.reference_no}
-                </span>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white mt-1">
-                  {selectedComplaint.title}
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => setSelectedComplaint(null)}
-                className="rounded-lg p-1 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-              >
-                ✕
-              </button>
+        <Modal
+          isOpen={!!selectedComplaint}
+          onClose={() => setSelectedComplaint(null)}
+          title={
+            <div className="flex items-center gap-2">
+              <span className="font-mono text-xs font-bold text-primary bg-primary/10 px-2.5 py-0.5 rounded-md">
+                {selectedComplaint.reference_no}
+              </span>
+              <span className="text-sm font-bold text-foreground truncate">{selectedComplaint.title}</span>
             </div>
-
-            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+          }
+          size="lg"
+        >
+          <div className="space-y-4">
+            <p className="text-xs text-foreground leading-relaxed">
               {selectedComplaint.description}
             </p>
 
             {/* Masked Citizen Contact Info */}
-            <div className="flex items-center gap-2 rounded-xl bg-stone-50 dark:bg-stone-800/50 p-3 text-xs">
-              <Phone className="h-4 w-4 text-[#800000] dark:text-rose-400" />
-              <span>Citizen Contact: <strong>{selectedComplaint.citizen_mobile_masked || '98******21'}</strong> (Privacy Protected)</span>
+            <div className="flex items-center gap-2 rounded-xl bg-surface-muted p-3 text-xs border border-border">
+              <Phone className="h-4 w-4 text-primary" />
+              <span>Citizen Contact: <strong className="font-mono">{selectedComplaint.citizen_mobile_masked || '98******21'}</strong> (Privacy Protected)</span>
             </div>
 
-            {/* AI Seams Placeholders (Milestone M8 / Section 7) */}
+            {/* AI Seams Placeholders */}
             <div className="space-y-3 pt-2">
-              {/* AI Insights Card */}
-              <div className="rounded-2xl border-2 border-dashed border-amber-300/80 dark:border-amber-700/60 bg-amber-50/40 dark:bg-amber-950/20 p-4 space-y-1.5">
-                <div className="flex items-center gap-2 text-amber-800 dark:text-amber-300 text-xs font-bold">
+              <Card className="border-2 border-dashed border-amber-500/40 bg-amber-500/5 p-4 space-y-1.5">
+                <div className="flex items-center gap-2 text-amber-600 dark:text-amber-400 text-xs font-bold">
                   <Sparkles className="h-4 w-4 text-amber-500 animate-spin" style={{ animationDuration: '4s' }} />
-                  <span>AI Insights (Coming Soon)</span>
+                  <span>AI Insights</span>
                 </div>
-                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                <p className="text-[11px] text-foreground-muted leading-relaxed">
                   Automated IndicBERT multi-lingual urgency scoring and category classification will populate here when AI services are activated.
                 </p>
-              </div>
+              </Card>
 
-              {/* Similar Complaints Card */}
-              <div className="rounded-2xl border-2 border-dashed border-rose-300/80 dark:border-rose-700/60 bg-rose-50/40 dark:bg-rose-950/20 p-4 space-y-1.5">
-                <div className="flex items-center gap-2 text-[#800000] dark:text-rose-300 text-xs font-bold">
-                  <Sparkles className="h-4 w-4 text-[#800000]" />
-                  <span>Similar Complaints Nearby (Coming Soon)</span>
+              <Card className="border-2 border-dashed border-primary/40 bg-primary/5 p-4 space-y-1.5">
+                <div className="flex items-center gap-2 text-primary text-xs font-bold">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  <span>Similar Complaints Nearby</span>
                 </div>
-                <p className="text-[11px] text-stone-500 dark:text-stone-400 leading-relaxed">
+                <p className="text-[11px] text-foreground-muted leading-relaxed">
                   Vector similarity duplicate detection will link reports in the same 100m radius to eliminate redundant field visits.
                 </p>
-              </div>
+              </Card>
             </div>
 
-            <div className="flex justify-end pt-3 border-t border-stone-100 dark:border-stone-800">
-              <button
-                type="button"
+            <div className="flex justify-end pt-3 border-t border-border">
+              <Button
+                variant="secondary"
                 onClick={() => setSelectedComplaint(null)}
-                className="rounded-xl bg-stone-100 dark:bg-stone-800 px-4 py-2 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-200"
               >
                 Close
-              </button>
+              </Button>
             </div>
           </div>
-        </div>
+        </Modal>
       )}
     </div>
   );
 };
+

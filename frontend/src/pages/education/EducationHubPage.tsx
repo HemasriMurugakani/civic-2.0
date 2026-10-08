@@ -13,7 +13,9 @@ import {
   LearningModuleItem, CertificateItem, LearningLeaderboardEntry,
   EducationAnalytics, ModuleDifficulty
 } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import {
+  PageHeader, Card, CardHeader, CardTitle, CardContent, Button, Badge
+} from '@/components/ui';
 
 export const EducationHubPage: React.FC = () => {
   const navigate = useNavigate();
@@ -104,12 +106,8 @@ export const EducationHubPage: React.FC = () => {
   const earnedCertsCount = modules.filter((m) => m.has_certificate).length;
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      <NammaSidebar className="hidden md:flex" />
-
-      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto overflow-y-auto">
-        {/* Hero Header */}
-        <div className="relative overflow-hidden bg-gradient-to-br from-[#800000] via-[#5c0000] to-[#360000] rounded-3xl p-6 md:p-10 text-white shadow-xl mb-8">
+    <div className="max-w-6xl mx-auto space-y-6 font-sans">
+      <div className="relative overflow-hidden bg-gradient-to-br from-[#800000] via-[#5c0000] to-[#360000] rounded-3xl p-6 md:p-10 text-white shadow-xl mb-6">
           <div className="absolute top-0 right-0 w-96 h-96 bg-white/5 rounded-full blur-3xl -mr-20 -mt-20 pointer-events-none" />
           <div className="relative z-10 max-w-2xl space-y-3">
             <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-white/10 backdrop-blur-md border border-white/20 text-xs font-semibold text-rose-200">
@@ -554,7 +552,6 @@ export const EducationHubPage: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
-    </div>
+      </div>
   );
 };

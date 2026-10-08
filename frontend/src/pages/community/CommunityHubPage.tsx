@@ -14,7 +14,10 @@ import {
   GroupListItem, ThreadListItem, ConnectionItem, ContentFlagItem,
   LeaderboardData, UserRole
 } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import {
+  PageHeader, Card, CardHeader, CardTitle, CardContent,
+  Button, Badge, Modal, Input, Select, EmptyState
+} from '@/components/ui';
 
 export const CommunityHubPage: React.FC = () => {
   const { user } = useAuth();
@@ -189,44 +192,36 @@ export const CommunityHubPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      <NammaSidebar className="hidden md:flex" />
-
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto overflow-y-auto">
-        {/* Header */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-stone-200 dark:border-stone-800">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#800000]/10 text-[#800000] dark:bg-rose-950/60 dark:text-rose-400">
-                <Users className="w-3.5 h-3.5" />
-                Makkal Mandram &bull; Civic Community Hub
-              </span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black text-stone-900 dark:text-white tracking-tight">
-              Community Hub
-            </h1>
-            <p className="text-sm text-stone-600 dark:text-stone-400 mt-1 max-w-2xl">
-              Connect with fellow residents, participate in neighborhood action groups, discuss civic solutions, and learn together.
-            </p>
-          </div>
-
+    <div className="space-y-6 font-sans">
+      <PageHeader
+        title="Community Hub"
+        subtitle="Connect with fellow residents, participate in neighborhood action groups, discuss civic solutions, and learn together."
+        badge={
+          <Badge variant="primary" size="md">
+            Makkal Mandram &bull; Civic Community Hub
+          </Badge>
+        }
+        action={
           <div className="flex items-center gap-2.5">
-            <button
+            <Button
+              variant="default"
+              size="sm"
               onClick={() => setShowThreadModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000] transition shadow-xs"
+              leftIcon={<Plus className="w-4 h-4" />}
             >
-              <Plus className="w-4 h-4" />
-              <span>Start Discussion</span>
-            </button>
-            <button
+              Start Discussion
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => setShowGroupModal(true)}
-              className="flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 text-stone-800 dark:text-stone-200 hover:bg-stone-50 dark:hover:bg-stone-700 transition shadow-2xs"
+              leftIcon={<Users className="w-4 h-4 text-[#800000] dark:text-rose-400" />}
             >
-              <Users className="w-4 h-4 text-[#800000] dark:text-rose-400" />
-              <span>Create Group</span>
-            </button>
+              Create Group
+            </Button>
           </div>
-        </div>
+        }
+      />
 
         {/* Tab Navigation */}
         <div className="flex items-center gap-2 border-b border-stone-200 dark:border-stone-800 pb-px mb-6 overflow-x-auto text-xs font-bold">
@@ -594,7 +589,6 @@ export const CommunityHubPage: React.FC = () => {
             )}
           </div>
         )}
-      </main>
 
       {/* Start Discussion Modal */}
       {showThreadModal && (

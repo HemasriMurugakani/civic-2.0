@@ -12,12 +12,26 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import {
   KPIData, DailyTrend, WardHotspot, OfficerWorkload,
-  ComplaintItem, User
+  ComplaintItem, User as UserType
 } from '@/lib/types';
-import { StatCard } from '@/components/common/StatCard';
-import { PageHeader } from '@/components/common/CommonUi';
-import { StatusBadge, PriorityDot, SLAChip } from '@/components/common/StatusBadges';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import {
+  PageHeader,
+  StatCard,
+  ChartCard,
+  Card,
+  Badge,
+  Button,
+  Modal,
+  Input,
+  Select,
+  TableContainer,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Skeleton
+} from '@/components/ui';
 
 export const DepartmentDashboardPage: React.FC = () => {
   const { user } = useAuth();
@@ -32,7 +46,7 @@ export const DepartmentDashboardPage: React.FC = () => {
 
   // Reassign Modal
   const [reassignComplaintId, setReassignComplaintId] = useState<number | null>(null);
-  const [availableOfficers, setAvailableOfficers] = useState<User[]>([]);
+  const [availableOfficers, setAvailableOfficers] = useState<UserType[]>([]);
   const [targetOfficerId, setTargetOfficerId] = useState<number | ''>('');
   const [reassignNote, setReassignNote] = useState('');
   const [reassigning, setReassigning] = useState(false);
@@ -67,7 +81,6 @@ export const DepartmentDashboardPage: React.FC = () => {
       setReassignComplaintId(null);
       setTargetOfficerId('');
       setReassignNote('');
-      // Refresh workloads
       api.getOfficerWorkloads().then(setOfficerWorkloads);
     } catch {}
     finally {
@@ -76,14 +89,26 @@ export const DepartmentDashboardPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-6 pb-12">
       <PageHeader
         title="Department Governance Dashboard"
         subtitle="Real-time KPI telemetry, officer dispatch workloads, and ward-level SLA compliance"
+        badge={
+          <Badge variant="primary" dot pulse>
+            Live Telemetry
+          </Badge>
+        }
       />
 
       {/* KPI Cards Row */}
-      {kpi && (
+      {loading ? (
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+          <Skeleton className="h-28 rounded-2xl" />
+        </div>
+      ) : kpi && (
         <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
           <StatCard
             label="Total Grievances"
@@ -115,175 +140,225 @@ export const DepartmentDashboardPage: React.FC = () => {
         </div>
       )}
 
-      {/* Recharts: Daily Trend & Category Volume */}
+      {/* Daily Trend & Category Volume */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Trend Line Chart */}
-        <div className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-            14-Day Grievance Trend (Received vs Resolved)
-          </h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="#78716c" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#78716c" />
-                <Tooltip contentStyle={{ backgroundColor: '#1c1917', color: '#fff', borderRadius: '8px', fontSize: '11px', border: 'none' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Line type="monotone" dataKey="created_count" name="Received" stroke="#800000" strokeWidth={2.5} dot={{ r: 2 }} />
-                <Line type="monotone" dataKey="resolved_count" name="Resolved" stroke="#059669" strokeWidth={2.5} dot={{ r: 2 }} />
-              </LineChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartCard
+          title="14-Day Grievance Trend"
+          subtitle="Complaints received vs resolved over the past 2 weeks"
+          period="Last 14 Days"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <LineChart data={trends} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" />
+              <XAxis dataKey="date" tick={{ fontSize: 10 }} stroke="currentColor" className="text-foreground-muted" />
+              <YAxis tick={{ fontSize: 10 }} stroke="currentColor" className="text-foreground-muted" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--color-surface)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-foreground)',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Line type="monotone" dataKey="created_count" name="Received" stroke="var(--color-primary)" strokeWidth={2.5} dot={{ r: 2 }} />
+              <Line type="monotone" dataKey="resolved_count" name="Resolved" stroke="#10b981" strokeWidth={2.5} dot={{ r: 2 }} />
+            </LineChart>
+          </ResponsiveContainer>
+        </ChartCard>
 
-        {/* Category Breakdown Bar Chart */}
-        <div className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-          <h3 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-            Top Categories by Volume
-          </h3>
-          <div className="h-64 w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={categoriesData.slice(0, 5)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                <XAxis dataKey="name_en" tick={{ fontSize: 10 }} stroke="#78716c" />
-                <YAxis tick={{ fontSize: 10 }} stroke="#78716c" />
-                <Tooltip contentStyle={{ backgroundColor: '#1c1917', color: '#fff', borderRadius: '8px', fontSize: '11px', border: 'none' }} />
-                <Legend wrapperStyle={{ fontSize: '11px' }} />
-                <Bar dataKey="count" name="Total Volume" fill="#800000" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="resolved_count" name="Resolved" fill="#059669" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </div>
+        <ChartCard
+          title="Top Categories by Volume"
+          subtitle="Distribution of incoming complaints by civic category"
+          period="Last 30 Days"
+        >
+          <ResponsiveContainer width="100%" height="100%">
+            <BarChart data={categoriesData.slice(0, 5)} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" />
+              <XAxis dataKey="name_en" tick={{ fontSize: 10 }} stroke="currentColor" className="text-foreground-muted" />
+              <YAxis tick={{ fontSize: 10 }} stroke="currentColor" className="text-foreground-muted" />
+              <Tooltip
+                contentStyle={{
+                  backgroundColor: 'var(--color-surface)',
+                  borderColor: 'var(--color-border)',
+                  color: 'var(--color-foreground)',
+                  borderRadius: '12px',
+                  fontSize: '11px',
+                  boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                }}
+              />
+              <Legend wrapperStyle={{ fontSize: '11px' }} />
+              <Bar dataKey="count" name="Total Volume" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+              <Bar dataKey="resolved_count" name="Resolved" fill="#10b981" radius={[4, 4, 0, 0]} />
+            </BarChart>
+          </ResponsiveContainer>
+        </ChartCard>
       </div>
 
       {/* Officer Workload Table with Reassign Action */}
-      <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-        <div className="flex items-center justify-between">
-          <h3 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-            Officer Workload & Reassignment Queue
-          </h3>
-          <span className="text-xs text-stone-400">{officerWorkloads.length} Active Officers</span>
+      <Card className="p-0 overflow-hidden">
+        <div className="p-5 border-b border-border flex items-center justify-between">
+          <div>
+            <h3 className="text-sm font-bold text-foreground">
+              Officer Workload & Reassignment Queue
+            </h3>
+            <p className="text-xs text-foreground-muted mt-0.5">
+              Current active grievance distributions across departmental officers
+            </p>
+          </div>
+          <Badge variant="secondary">
+            {officerWorkloads.length} Officers
+          </Badge>
         </div>
 
-        <div className="overflow-x-auto">
+        <TableContainer>
           <table className="w-full text-left border-collapse text-xs">
-            <thead>
-              <tr className="border-b border-stone-100 dark:border-stone-800 text-stone-400 uppercase font-semibold">
-                <th className="p-3">Officer Name</th>
-                <th className="p-3">Active Cases</th>
-                <th className="p-3">Resolved</th>
-                <th className="p-3">Overdue SLA</th>
-                <th className="p-3">Avg Resolution Time</th>
-                <th className="p-3">Action</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+            <TableHeader>
+              <TableRow>
+                <TableHead>Officer Name</TableHead>
+                <TableHead>Active Cases</TableHead>
+                <TableHead>Resolved</TableHead>
+                <TableHead>Overdue SLA</TableHead>
+                <TableHead>Avg Resolution Time</TableHead>
+                <TableHead className="text-right">Action</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
               {officerWorkloads.map((ow) => (
-                <tr key={ow.officer_id} className="hover:bg-stone-50 dark:hover:bg-stone-800/40">
-                  <td className="p-3 font-semibold text-stone-900 dark:text-white">{ow.officer_name}</td>
-                  <td className="p-3">
-                    <span className="rounded-full bg-rose-50 dark:bg-rose-950 px-2.5 py-0.5 text-[#800000] dark:text-rose-300 font-bold">
+                <TableRow key={ow.officer_id}>
+                  <TableCell className="font-semibold text-foreground">
+                    {ow.officer_name}
+                  </TableCell>
+                  <TableCell>
+                    <Badge variant="primary" size="sm">
                       {ow.active_complaints}
-                    </span>
-                  </td>
-                  <td className="p-3 text-emerald-600 font-semibold">{ow.resolved_complaints}</td>
-                  <td className="p-3">
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                    {ow.resolved_complaints}
+                  </TableCell>
+                  <TableCell>
                     {ow.overdue_complaints > 0 ? (
-                      <span className="rounded-full bg-rose-100 dark:bg-rose-950 px-2 py-0.5 text-rose-700 dark:text-rose-300 font-bold">
+                      <Badge variant="danger" size="sm">
                         {ow.overdue_complaints} overdue
-                      </span>
+                      </Badge>
                     ) : (
-                      <span className="text-stone-400">0</span>
+                      <span className="text-foreground-muted">0</span>
                     )}
-                  </td>
-                  <td className="p-3 text-stone-500">{ow.avg_resolution_hours}h</td>
-                  <td className="p-3">
-                    <button
-                      type="button"
+                  </TableCell>
+                  <TableCell className="text-foreground-muted">
+                    {ow.avg_resolution_hours}h
+                  </TableCell>
+                  <TableCell className="text-right">
+                    <Button
+                      size="sm"
+                      variant="outline"
                       onClick={() => setReassignComplaintId(ow.active_complaints > 0 ? 1 : null)}
-                      className="rounded-lg border border-stone-200 dark:border-stone-700 px-2.5 py-1 text-[11px] font-bold text-[#800000] hover:bg-rose-50 dark:hover:bg-rose-950/50 transition"
+                      className="text-[11px] h-7 px-2 font-bold"
                     >
                       Rebalance
-                    </button>
-                  </td>
-                </tr>
+                    </Button>
+                  </TableCell>
+                </TableRow>
               ))}
-            </tbody>
+            </TableBody>
           </table>
-        </div>
-      </section>
+        </TableContainer>
+      </Card>
 
       {/* Ward Hotspots Summary Table */}
-      <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-        <h3 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          Ward-Level Hotspots & Grievance Density
-        </h3>
+      <Card className="space-y-4">
+        <div>
+          <h3 className="text-sm font-bold text-foreground">
+            Ward-Level Hotspots & Grievance Density
+          </h3>
+          <p className="text-xs text-foreground-muted mt-0.5">
+            Geographic density and resolution rates across administrative wards
+          </p>
+        </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {wardHotspots.slice(0, 6).map((wh) => (
-            <div
+            <Card
               key={wh.ward_id}
-              className="rounded-xl border border-stone-200 dark:border-stone-800 p-4 bg-stone-50/70 dark:bg-stone-800/40 space-y-2"
+              className="bg-surface-muted/40 p-4 space-y-2 border-border"
             >
               <div className="flex items-center justify-between">
-                <span className="font-bold text-xs text-stone-900 dark:text-white">{wh.ward_name}</span>
-                <span className="text-xs font-mono font-bold text-[#800000] dark:text-rose-400">{wh.total_complaints} total</span>
+                <span className="font-bold text-xs text-foreground">{wh.ward_name}</span>
+                <span className="text-xs font-mono font-bold text-primary">{wh.total_complaints} total</span>
               </div>
-              <div className="flex items-center justify-between text-xs text-stone-500">
+              <div className="flex items-center justify-between text-xs text-foreground-muted">
                 <span>Unresolved: {wh.unresolved_count}</span>
-                <span className="text-emerald-600 font-semibold">{wh.sla_compliance_rate}% SLA</span>
+                <span className="text-emerald-600 dark:text-emerald-400 font-semibold">{wh.sla_compliance_rate}% SLA</span>
               </div>
-            </div>
+            </Card>
           ))}
         </div>
-      </section>
+      </Card>
 
       {/* Reassign Modal */}
       {reassignComplaintId && (
-        <ConfirmDialog
+        <Modal
           isOpen={!!reassignComplaintId}
-          title="Reassign Grievance to Another Officer"
-          description="Select an available field officer in your department to transfer this case workload."
-          confirmLabel="Execute Reassignment"
-          loading={reassigning}
-          onConfirm={handleReassign}
-          onCancel={() => setReassignComplaintId(null)}
+          onClose={() => setReassignComplaintId(null)}
+          title="Reassign Grievance Workload"
+          size="md"
         >
-          <div className="space-y-3">
+          <div className="space-y-4">
+            <p className="text-xs text-foreground-muted">
+              Select an available field officer in your department to transfer this case workload.
+            </p>
+
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1.5">
                 Target Officer
               </label>
-              <select
+              <Select
                 value={targetOfficerId}
                 onChange={(e) => setTargetOfficerId(e.target.value ? Number(e.target.value) : '')}
-                className="w-full rounded-xl border border-stone-200 dark:border-stone-700 p-2 text-xs bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white"
-              >
-                <option value="">Select target officer...</option>
-                {availableOfficers.map((o) => (
-                  <option key={o.id} value={o.id}>
-                    {o.name} ({o.role})
-                  </option>
-                ))}
-              </select>
+                options={[
+                  { value: '', label: 'Select target officer...' },
+                  ...availableOfficers.map((o) => ({
+                    value: String(o.id),
+                    label: `${o.name} (${o.role})`
+                  }))
+                ]}
+              />
             </div>
+
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
+              <label className="block text-xs font-bold text-foreground mb-1.5">
                 Reason / Note
               </label>
-              <input
+              <Input
                 type="text"
                 value={reassignNote}
                 onChange={(e) => setReassignNote(e.target.value)}
-                placeholder="e.g. Workload balancing"
-                className="w-full rounded-xl border border-stone-200 dark:border-stone-700 p-2 text-xs bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white"
+                placeholder="e.g. Workload balancing or geographic transfer"
               />
             </div>
+
+            <div className="pt-3 border-t border-border flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                onClick={() => setReassignComplaintId(null)}
+              >
+                Cancel
+              </Button>
+              <Button
+                variant="primary"
+                isLoading={reassigning}
+                onClick={handleReassign}
+              >
+                Execute Reassignment
+              </Button>
+            </div>
           </div>
-        </ConfirmDialog>
+        </Modal>
       )}
     </div>
   );
 };
+

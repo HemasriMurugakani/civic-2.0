@@ -10,7 +10,9 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { LearningModuleDetail, QuizSubmissionResult } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import {
+  PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent, Button, Badge
+} from '@/components/ui';
 
 export const ModuleDetailPage: React.FC = () => {
   const { slug } = useParams<{ slug: string }>();
@@ -132,32 +134,26 @@ export const ModuleDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <div className="flex flex-col items-center gap-3">
-            <div className="w-8 h-8 border-3 border-[#800000] border-t-transparent rounded-full animate-spin" />
-            <p className="text-xs text-stone-500 font-semibold">Loading curriculum & lesson reader...</p>
-          </div>
-        </main>
+      <div className="max-w-6xl mx-auto p-8 flex items-center justify-center font-sans">
+        <div className="flex flex-col items-center gap-3">
+          <div className="w-8 h-8 border-3 border-[#800000] border-t-transparent rounded-full animate-spin" />
+          <p className="text-xs text-stone-500 font-semibold">Loading curriculum & lesson reader...</p>
+        </div>
       </div>
     );
   }
 
   if (!module) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 text-center max-w-md mx-auto my-auto space-y-4">
-          <h2 className="text-xl font-bold">Course Not Found</h2>
-          <p className="text-xs text-stone-500">The requested learning curriculum does not exist.</p>
-          <Link
-            to="/education"
-            className="inline-flex px-4 py-2 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000]"
-          >
-            Back to Academy
-          </Link>
-        </main>
+      <div className="max-w-6xl mx-auto p-8 text-center my-auto space-y-4 font-sans">
+        <h2 className="text-xl font-bold">Course Not Found</h2>
+        <p className="text-xs text-stone-500">The requested learning curriculum does not exist.</p>
+        <Link
+          to="/education"
+          className="inline-flex px-4 py-2 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000]"
+        >
+          Back to Academy
+        </Link>
       </div>
     );
   }
@@ -166,10 +162,7 @@ export const ModuleDetailPage: React.FC = () => {
   const isCurrentLessonCompleted = currentLesson ? module.completed_lesson_ids.includes(currentLesson.id) : false;
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      <NammaSidebar className="hidden md:flex" />
-
-      <main className="flex-1 p-4 md:p-8 max-w-6xl mx-auto overflow-y-auto">
+    <div className="max-w-6xl mx-auto space-y-6 font-sans">
         <Link
           to="/education"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-stone-900 dark:hover:text-white mb-4"
@@ -517,7 +510,6 @@ export const ModuleDetailPage: React.FC = () => {
             )}
           </div>
         </div>
-      </main>
-    </div>
+      </div>
   );
 };

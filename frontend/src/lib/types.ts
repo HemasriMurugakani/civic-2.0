@@ -135,6 +135,7 @@ export interface ComplaintItem {
   escalation_level: number;
   assigned_officer_id?: number;
   assigned_officer_name?: string;
+  assigned_officer_phone?: string;
   latitude?: number;
   longitude?: number;
   address_text?: string;

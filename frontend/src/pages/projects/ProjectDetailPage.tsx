@@ -11,7 +11,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { ProjectDetail, ProjectUpdateItem } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import {
+  PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent,
+  Button, Badge, Modal
+} from '@/components/ui';
 
 function formatBudget(amount?: number): string {
   if (!amount) return '₹ N/A';
@@ -162,34 +165,28 @@ export const ProjectDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 flex items-center justify-center">
-          <div className="text-center">
-            <div className="w-10 h-10 border-3 border-[#800000] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-            <p className="text-sm font-semibold text-stone-500">Loading project dossier...</p>
-          </div>
-        </main>
+      <div className="max-w-5xl mx-auto p-8 flex items-center justify-center font-sans">
+        <div className="text-center">
+          <div className="w-10 h-10 border-3 border-[#800000] border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm font-semibold text-stone-500">Loading project dossier...</p>
+        </div>
       </div>
     );
   }
 
   if (!project) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 text-center py-20">
-          <HardHat className="w-16 h-16 text-stone-300 dark:text-stone-700 mx-auto mb-4" />
-          <h2 className="text-xl font-bold">Project Not Found</h2>
-          <p className="text-sm text-stone-500 mt-2">The requested project ID does not exist in the database.</p>
-          <Link
-            to="/projects"
-            className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-[#800000] text-white text-xs font-bold"
-          >
-            <ArrowLeft className="w-4 h-4" />
-            <span>Back to Projects Tracker</span>
-          </Link>
-        </main>
+      <div className="max-w-5xl mx-auto p-8 text-center py-20 font-sans">
+        <HardHat className="w-16 h-16 text-stone-300 dark:text-stone-700 mx-auto mb-4" />
+        <h2 className="text-xl font-bold">Project Not Found</h2>
+        <p className="text-sm text-stone-500 mt-2">The requested project ID does not exist in the database.</p>
+        <Link
+          to="/projects"
+          className="inline-flex items-center gap-2 mt-4 px-4 py-2 rounded-xl bg-[#800000] text-white text-xs font-bold"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          <span>Back to Projects Tracker</span>
+        </Link>
       </div>
     );
   }
@@ -198,10 +195,7 @@ export const ProjectDetailPage: React.FC = () => {
   const hasLagAlert = project.progress_lag_alert;
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      <NammaSidebar className="hidden md:flex" />
-
-      <main className="flex-1 p-4 md:p-8 max-w-5xl mx-auto overflow-y-auto">
+    <div className="max-w-5xl mx-auto space-y-6 font-sans">
         {/* Navigation Breadcrumb */}
         <div className="flex items-center justify-between mb-4">
           <Link
@@ -483,7 +477,6 @@ export const ProjectDetailPage: React.FC = () => {
             </div>
           )}
         </div>
-      </main>
 
       {/* Transparency Rating Modal */}
       {showRatingModal && (

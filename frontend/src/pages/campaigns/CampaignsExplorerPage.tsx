@@ -12,6 +12,17 @@ import {
   CampaignListItem, CampaignStatus, CampaignListResponse
 } from '@/lib/types';
 import { toast } from 'sonner';
+import {
+  PageHeader,
+  StatCard,
+  Card,
+  Badge,
+  Button,
+  Modal,
+  EmptyState,
+  Input,
+  Select,
+} from '@/components/ui';
 
 const THEME_ICONS: Record<string, { icon: any; color: string; bg: string; border: string }> = {
   monsoon: { icon: CloudRain, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-200 dark:border-blue-800' },
@@ -115,7 +126,7 @@ export const CampaignsExplorerPage: React.FC = () => {
   const handleCreateCampaign = async (e: React.FormEvent) => {
     e.preventDefault();
     try {
-      setCreating(true);
+      setCreating(false);
       const payload = {
         ...formData,
         start_at: new Date(formData.start_at).toISOString(),
@@ -164,30 +175,29 @@ export const CampaignsExplorerPage: React.FC = () => {
     switch (status) {
       case 'active':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-800 dark:bg-emerald-950/80 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-700">
-            <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse"></span>
+          <Badge variant="success" size="sm" dot>
             Active Now
-          </span>
+          </Badge>
         );
       case 'scheduled':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-blue-100 text-blue-800 dark:bg-blue-950/80 dark:text-blue-300 border border-blue-300 dark:border-blue-700">
-            <Clock className="w-3 h-3 text-blue-500" />
+          <Badge variant="info" size="sm">
+            <Clock className="w-3 h-3 mr-1" />
             Upcoming
-          </span>
+          </Badge>
         );
       case 'completed':
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-800 dark:bg-stone-800 dark:text-stone-300 border border-stone-300 dark:border-stone-700">
-            <CheckCircle2 className="w-3 h-3 text-stone-500" />
+          <Badge variant="outline" size="sm">
+            <CheckCircle2 className="w-3 h-3 mr-1" />
             Completed
-          </span>
+          </Badge>
         );
       default:
         return (
-          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300">
+          <Badge variant="neutral" size="sm">
             {status}
-          </span>
+          </Badge>
         );
     }
   };
@@ -195,112 +205,72 @@ export const CampaignsExplorerPage: React.FC = () => {
   return (
     <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-300">
       {/* Page Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-6">
-        <div>
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 rounded-xl bg-primary/10 text-primary border border-primary/20">
-              <Flame className="w-7 h-7" />
-            </div>
-            <div>
-              <div className="flex items-center gap-2">
-                <h1 className="text-2xl sm:text-3xl font-serif font-bold text-stone-900 dark:text-stone-100">
-                  Seasonal Civic Campaigns
-                </h1>
-                <span className="text-xs px-2.5 py-0.5 rounded-full bg-primary/10 text-primary font-medium border border-primary/20">
-                  பருவகால இயக்கங்கள்
-                </span>
-              </div>
-              <p className="text-sm text-stone-600 dark:text-stone-400 mt-1">
-                State and GCC city-wide collective missions timed with seasonal needs — monsoon audit, cleanliness drives, and road safety.
-              </p>
-            </div>
-          </div>
-        </div>
-
-        {/* Admin Actions */}
-        <div className="flex items-center gap-3">
-          {user?.role === 'gov_admin' && (
-            <>
-              <button
+      <PageHeader
+        title="Seasonal Civic Campaigns"
+        subtitle="State and GCC city-wide collective missions timed with seasonal needs — monsoon audit, cleanliness drives, and road safety."
+        badge={
+          <Badge variant="primary" size="sm">
+            பருவகால இயக்கங்கள்
+          </Badge>
+        }
+        action={
+          user?.role === 'gov_admin' ? (
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSyncLifecycles}
-                disabled={syncing}
-                className="inline-flex items-center gap-2 px-3.5 py-2 text-xs font-medium rounded-lg border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-700 transition"
+                loading={syncing}
                 title="Sync campaign start & end timestamps"
               >
-                <RefreshCw className={`w-3.5 h-3.5 ${syncing ? 'animate-spin' : ''}`} />
+                <RefreshCw className={`w-3.5 h-3.5 mr-1.5 ${syncing ? 'animate-spin' : ''}`} />
                 Sync Lifecycles
-              </button>
-              <button
+              </Button>
+              <Button
+                variant="primary"
+                size="sm"
                 onClick={() => setShowCreateModal(true)}
-                className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-primary hover:bg-primary/90 text-white shadow-sm transition"
               >
-                <Plus className="w-4 h-4" />
+                <Plus className="w-4 h-4 mr-1.5" />
                 New Campaign
-              </button>
-            </>
-          )}
-        </div>
-      </div>
+              </Button>
+            </div>
+          ) : undefined
+        }
+      />
 
-      {/* Dynamic Statistics Banner (computed from database) */}
+      {/* Dynamic Statistics Banner */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Total Campaigns</span>
-            <Flame className="w-4 h-4 text-primary" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-serif text-stone-900 dark:text-white">
-              {stats.total_campaigns}
-            </span>
-            <span className="text-xs text-stone-500">all seasons</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Active Missions</span>
-            <Sparkles className="w-4 h-4 text-emerald-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-serif text-emerald-600 dark:text-emerald-400">
-              {stats.active_campaigns}
-            </span>
-            <span className="text-xs text-emerald-600/80 dark:text-emerald-400/80">participating now</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Completed</span>
-            <CheckCircle2 className="w-4 h-4 text-blue-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-serif text-stone-900 dark:text-white">
-              {stats.completed_campaigns}
-            </span>
-            <span className="text-xs text-stone-500">achieved drives</span>
-          </div>
-        </div>
-
-        <div className="p-5 rounded-2xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs">
-          <div className="flex items-center justify-between">
-            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider">Community Citizens</span>
-            <Users className="w-4 h-4 text-amber-500" />
-          </div>
-          <div className="mt-2 flex items-baseline gap-2">
-            <span className="text-2xl font-bold font-serif text-amber-600 dark:text-amber-400">
-              {stats.total_participants}
-            </span>
-            <span className="text-xs text-stone-500">joined & active</span>
-          </div>
-        </div>
+        <StatCard
+          label="Total Campaigns"
+          value={stats.total_campaigns}
+          subtext="all seasons"
+          icon={<Flame className="w-5 h-5" />}
+        />
+        <StatCard
+          label="Active Missions"
+          value={stats.active_campaigns}
+          subtext="participating now"
+          icon={<Sparkles className="w-5 h-5 text-emerald-500" />}
+        />
+        <StatCard
+          label="Completed"
+          value={stats.completed_campaigns}
+          subtext="achieved drives"
+          icon={<CheckCircle2 className="w-5 h-5 text-blue-500" />}
+        />
+        <StatCard
+          label="Community Citizens"
+          value={stats.total_participants}
+          subtext="joined & active"
+          icon={<Users className="w-5 h-5 text-amber-500" />}
+        />
       </div>
 
       {/* Filters: Status Tabs + Season Theme Pills */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         {/* Status Tabs */}
-        <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-x-auto">
+        <div className="flex items-center p-1 rounded-xl bg-stone-100 dark:bg-stone-800 border border-stone-200 dark:border-stone-700 overflow-x-auto min-h-[44px]">
           {[
             { id: 'all', label: 'All Campaigns' },
             { id: 'active', label: 'Active Now' },
@@ -310,7 +280,7 @@ export const CampaignsExplorerPage: React.FC = () => {
             <button
               key={tab.id}
               onClick={() => setStatusFilter(tab.id)}
-              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap ${
+              className={`px-3.5 py-1.5 rounded-lg text-xs font-medium transition whitespace-nowrap min-h-[36px] ${
                 statusFilter === tab.id
                   ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-stone-100 shadow-xs'
                   : 'text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-200'
@@ -322,7 +292,7 @@ export const CampaignsExplorerPage: React.FC = () => {
         </div>
 
         {/* Theme Filter Pills */}
-        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0">
+        <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 min-h-[44px]">
           <span className="text-xs text-stone-500 whitespace-nowrap flex items-center gap-1">
             <Filter className="w-3.5 h-3.5" /> Season:
           </span>
@@ -339,7 +309,7 @@ export const CampaignsExplorerPage: React.FC = () => {
               <button
                 key={theme.id}
                 onClick={() => setThemeFilter(theme.id)}
-                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition border ${
+                className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium transition border min-h-[36px] ${
                   isSelected
                     ? 'bg-primary text-white border-primary shadow-xs'
                     : 'bg-white dark:bg-stone-900 text-stone-700 dark:text-stone-300 border-stone-200 dark:border-stone-800 hover:border-stone-300'
@@ -360,13 +330,16 @@ export const CampaignsExplorerPage: React.FC = () => {
           <p className="text-sm text-stone-500">Loading seasonal campaigns...</p>
         </div>
       ) : campaigns.length === 0 ? (
-        <div className="py-20 text-center rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-800 bg-white/50 dark:bg-stone-900/50">
-          <Flame className="w-12 h-12 text-stone-300 dark:text-stone-700 mx-auto mb-3" />
-          <h3 className="text-base font-semibold text-stone-900 dark:text-stone-100">No campaigns found</h3>
-          <p className="text-xs text-stone-500 mt-1 max-w-sm mx-auto">
-            Try adjusting your status or seasonal theme filters to view other civic missions.
-          </p>
-        </div>
+        <EmptyState
+          title="No campaigns found"
+          description="Try adjusting your status or seasonal theme filters to view other civic missions."
+          icon={<Flame className="w-8 h-8 text-stone-400" />}
+          action={
+            <Button variant="outline" size="sm" onClick={() => { setStatusFilter('all'); setThemeFilter('all'); }}>
+              Reset Filters
+            </Button>
+          }
+        />
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {campaigns.map(camp => {
@@ -425,7 +398,7 @@ export const CampaignsExplorerPage: React.FC = () => {
                 {/* Card Body */}
                 <div className="p-5 flex-1 flex flex-col justify-between space-y-4">
                   <div>
-                    <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100 group-hover:text-primary transition line-clamp-1">
+                    <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 group-hover:text-primary transition line-clamp-1">
                       {camp.title}
                     </h3>
                     <p className="text-xs text-stone-600 dark:text-stone-400 mt-2 line-clamp-2 leading-relaxed">
@@ -462,7 +435,7 @@ export const CampaignsExplorerPage: React.FC = () => {
                       </span>
                       {camp.badge_name && (
                         <span className="inline-flex items-center gap-1 text-stone-600 dark:text-stone-300 font-medium">
-                          <Trophy className="w-3 h-3 text-gold" />
+                          <Trophy className="w-3 h-3 text-amber-500" />
                           {camp.badge_name}
                         </span>
                       )}
@@ -478,7 +451,7 @@ export const CampaignsExplorerPage: React.FC = () => {
                     {camp.is_joined ? (
                       <Link
                         to={`/campaigns/${camp.slug}`}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-emerald-50 dark:bg-emerald-950/40 text-emerald-700 dark:text-emerald-300 border border-emerald-300 dark:border-emerald-800 hover:bg-emerald-100 transition min-h-[44px]"
                       >
                         <Check className="w-3.5 h-3.5" />
                         {camp.is_completed ? 'Completed (View)' : 'Joined (View Tasks)'}
@@ -486,28 +459,27 @@ export const CampaignsExplorerPage: React.FC = () => {
                     ) : camp.status === 'completed' ? (
                       <Link
                         to={`/campaigns/${camp.slug}`}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition"
+                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2.5 rounded-xl text-xs font-semibold bg-stone-100 dark:bg-stone-800 text-stone-700 dark:text-stone-300 hover:bg-stone-200 dark:hover:bg-stone-700 transition min-h-[44px]"
                       >
                         View Summary & Results
                       </Link>
                     ) : (
-                      <button
+                      <Button
+                        variant="primary"
+                        size="sm"
                         onClick={(e) => handleJoinCampaign(e, camp)}
                         disabled={joiningId === camp.id}
-                        className="flex-1 inline-flex items-center justify-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold bg-primary hover:bg-primary/90 text-white shadow-xs transition"
+                        loading={joiningId === camp.id}
+                        className="flex-1 min-h-[44px]"
                       >
-                        {joiningId === camp.id ? (
-                          <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                        ) : (
-                          <Plus className="w-3.5 h-3.5" />
-                        )}
+                        <Plus className="w-3.5 h-3.5 mr-1" />
                         Join Mission (+25 pts)
-                      </button>
+                      </Button>
                     )}
 
                     <Link
                       to={`/campaigns/${camp.slug}`}
-                      className="p-2 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
+                      className="p-2.5 rounded-xl border border-stone-200 dark:border-stone-800 text-stone-500 hover:text-stone-900 dark:hover:text-stone-100 hover:bg-stone-50 dark:hover:bg-stone-800 transition min-h-[44px] min-w-[44px] flex items-center justify-center"
                       title="View details and leaderboard"
                     >
                       <ChevronRight className="w-4 h-4" />
@@ -521,195 +493,178 @@ export const CampaignsExplorerPage: React.FC = () => {
       )}
 
       {/* Admin Create Campaign Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-stone-950/60 backdrop-blur-xs p-4 animate-in fade-in duration-200">
-          <div className="w-full max-w-xl bg-white dark:bg-stone-900 rounded-2xl shadow-xl border border-stone-200 dark:border-stone-800 overflow-hidden max-h-[90vh] flex flex-col">
-            <div className="flex items-center justify-between px-6 py-4 border-b border-stone-200 dark:border-stone-800">
-              <div className="flex items-center gap-2">
-                <Flame className="w-5 h-5 text-primary" />
-                <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100">
-                  Create Seasonal Campaign
-                </h3>
-              </div>
-              <button
-                onClick={() => setShowCreateModal(false)}
-                className="text-stone-400 hover:text-stone-600 dark:hover:text-stone-300"
-              >
-                <X className="w-5 h-5" />
-              </button>
+      <Modal
+        isOpen={showCreateModal}
+        onClose={() => setShowCreateModal(false)}
+        title={
+          <div className="flex items-center gap-2">
+            <Flame className="w-5 h-5 text-primary" />
+            <span>Create Seasonal Campaign</span>
+          </div>
+        }
+        description="Launch a new state or GCC seasonal civic mission."
+        maxWidth="xl"
+      >
+        <form onSubmit={handleCreateCampaign} className="space-y-4 text-xs">
+          <div>
+            <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+              Campaign Title
+            </label>
+            <Input
+              type="text"
+              required
+              placeholder="e.g. Monsoon Preparedness 2026"
+              value={formData.title}
+              onChange={e => {
+                const title = e.target.value;
+                const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
+                setFormData({ ...formData, title, slug });
+              }}
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Slug
+              </label>
+              <Input
+                type="text"
+                required
+                value={formData.slug}
+                onChange={e => setFormData({ ...formData, slug: e.target.value })}
+              />
             </div>
 
-            <form onSubmit={handleCreateCampaign} className="p-6 overflow-y-auto space-y-4 text-xs">
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Campaign Title
-                </label>
-                <input
-                  type="text"
-                  required
-                  placeholder="e.g. Monsoon Preparedness 2026"
-                  value={formData.title}
-                  onChange={e => {
-                    const title = e.target.value;
-                    const slug = title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
-                    setFormData({ ...formData, title, slug });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-1 focus:ring-primary"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Slug
-                  </label>
-                  <input
-                    type="text"
-                    required
-                    value={formData.slug}
-                    onChange={e => setFormData({ ...formData, slug: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Seasonal Theme
-                  </label>
-                  <select
-                    value={formData.season_theme}
-                    onChange={e => setFormData({ ...formData, season_theme: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="monsoon">Monsoon</option>
-                    <option value="swachhata">Swachhata</option>
-                    <option value="road_safety">Road Safety</option>
-                    <option value="water_conservation">Water Conservation</option>
-                  </select>
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Description
-                </label>
-                <textarea
-                  rows={3}
-                  required
-                  placeholder="Explain the seasonal civic focus and citizen call to action..."
-                  value={formData.description}
-                  onChange={e => setFormData({ ...formData, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Start Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={formData.start_at}
-                    onChange={e => setFormData({ ...formData, start_at: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    End Date & Time
-                  </label>
-                  <input
-                    type="datetime-local"
-                    required
-                    value={formData.end_at}
-                    onChange={e => setFormData({ ...formData, end_at: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-3 gap-3">
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Target Metric
-                  </label>
-                  <select
-                    value={formData.target_metric}
-                    onChange={e => setFormData({ ...formData, target_metric: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  >
-                    <option value="reports_filed">Reports Filed</option>
-                    <option value="reports_verified">Reports Verified</option>
-                    <option value="modules_completed">Modules Passed</option>
-                    <option value="spots_adopted">Spots Adopted</option>
-                  </select>
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Target Value
-                  </label>
-                  <input
-                    type="number"
-                    min="1"
-                    required
-                    value={formData.target_value}
-                    onChange={e => setFormData({ ...formData, target_value: parseInt(e.target.value) || 100 })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-
-                <div>
-                  <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                    Bonus Points
-                  </label>
-                  <input
-                    type="number"
-                    min="10"
-                    required
-                    value={formData.points_reward}
-                    onChange={e => setFormData({ ...formData, points_reward: parseInt(e.target.value) || 50 })}
-                    className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
-                  Banner Image URL (Unsplash or direct image)
-                </label>
-                <input
-                  type="url"
-                  placeholder="https://images.unsplash.com/photo-..."
-                  value={formData.banner_image_url}
-                  onChange={e => setFormData({ ...formData, banner_image_url: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100"
-                />
-              </div>
-
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800">
-                <button
-                  type="button"
-                  onClick={() => setShowCreateModal(false)}
-                  className="px-4 py-2 rounded-lg border border-stone-300 dark:border-stone-700 text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-800 transition"
-                >
-                  Cancel
-                </button>
-                <button
-                  type="submit"
-                  disabled={creating}
-                  className="px-4 py-2 rounded-lg bg-primary hover:bg-primary/90 text-white font-medium shadow-xs transition"
-                >
-                  {creating ? 'Creating...' : 'Create Campaign'}
-                </button>
-              </div>
-            </form>
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Seasonal Theme
+              </label>
+              <Select
+                value={formData.season_theme}
+                onChange={e => setFormData({ ...formData, season_theme: e.target.value })}
+              >
+                <option value="monsoon">Monsoon</option>
+                <option value="swachhata">Swachhata</option>
+                <option value="road_safety">Road Safety</option>
+                <option value="water_conservation">Water Conservation</option>
+              </Select>
+            </div>
           </div>
-        </div>
-      )}
+
+          <div>
+            <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+              Description
+            </label>
+            <textarea
+              rows={3}
+              required
+              placeholder="Explain the seasonal civic focus and citizen call to action..."
+              value={formData.description}
+              onChange={e => setFormData({ ...formData, description: e.target.value })}
+              className="w-full px-3 py-2 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-stone-100 focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            />
+          </div>
+
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Start Date & Time
+              </label>
+              <Input
+                type="datetime-local"
+                required
+                value={formData.start_at}
+                onChange={e => setFormData({ ...formData, start_at: e.target.value })}
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                End Date & Time
+              </label>
+              <Input
+                type="datetime-local"
+                required
+                value={formData.end_at}
+                onChange={e => setFormData({ ...formData, end_at: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Target Metric
+              </label>
+              <Select
+                value={formData.target_metric}
+                onChange={e => setFormData({ ...formData, target_metric: e.target.value })}
+              >
+                <option value="reports_filed">Reports Filed</option>
+                <option value="reports_verified">Reports Verified</option>
+                <option value="modules_completed">Modules Passed</option>
+                <option value="spots_adopted">Spots Adopted</option>
+              </Select>
+            </div>
+
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Target Value
+              </label>
+              <Input
+                type="number"
+                min="1"
+                required
+                value={formData.target_value}
+                onChange={e => setFormData({ ...formData, target_value: parseInt(e.target.value) || 100 })}
+              />
+            </div>
+
+            <div>
+              <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+                Bonus Points
+              </label>
+              <Input
+                type="number"
+                min="10"
+                required
+                value={formData.points_reward}
+                onChange={e => setFormData({ ...formData, points_reward: parseInt(e.target.value) || 50 })}
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block font-medium text-stone-700 dark:text-stone-300 mb-1">
+              Banner Image URL (Unsplash or direct image)
+            </label>
+            <Input
+              type="url"
+              placeholder="https://images.unsplash.com/photo-..."
+              value={formData.banner_image_url}
+              onChange={e => setFormData({ ...formData, banner_image_url: e.target.value })}
+            />
+          </div>
+
+          <div className="flex items-center justify-end gap-3 pt-4 border-t border-stone-200 dark:border-stone-800">
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => setShowCreateModal(false)}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              loading={creating}
+            >
+              Create Campaign
+            </Button>
+          </div>
+        </form>
+      </Modal>
     </div>
   );
 };

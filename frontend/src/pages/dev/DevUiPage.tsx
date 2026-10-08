@@ -1,24 +1,50 @@
 import React, { useState } from 'react';
 import {
   BarChart3, Sparkles, CheckCircle2, AlertTriangle,
-  Clock, Shield, Star, RefreshCw
+  Clock, Shield, Star, RefreshCw, Download, Filter,
+  Layers, Users, MapPin, Award, Check
 } from 'lucide-react';
+import {
+  Button,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Input,
+  Select,
+  Badge,
+  Table,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Modal,
+  Skeleton,
+  EmptyState,
+  StatCard,
+  ChartCard,
+  Breadcrumbs,
+  PageHeader,
+  FilterBar,
+  ExportButton
+} from '@/components/ui';
 import { StatusBadge, PriorityDot, SLAChip } from '@/components/common/StatusBadges';
-import { StatCard } from '@/components/common/StatCard';
 import { ComplaintCard } from '@/components/common/ComplaintCard';
 import { Timeline } from '@/components/common/Timeline';
-import {
-  PageHeader, EmptyState, StarRating, FileDropzone,
-  Stepper, LanguageToggle, ThemeToggle, NotificationBell
-} from '@/components/common/CommonUi';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import { StarRating, FileDropzone, Stepper, LanguageToggle, ThemeToggle, NotificationBell } from '@/components/common/CommonUi';
 import { ComplaintItem } from '@/lib/types';
+import { toast } from 'sonner';
 
 export const DevUiPage: React.FC = () => {
   const [interactiveRating, setInteractiveRating] = useState(4);
   const [demoFile, setDemoFile] = useState<File | null>(null);
-  const [dialogOpen, setDialogOpen] = useState(false);
+  const [modalOpen, setModalOpen] = useState(false);
   const [currentStepperStep, setCurrentStepperStep] = useState(2);
+  const [filterSearch, setFilterSearch] = useState('');
+  const [filterDept, setFilterDept] = useState('all');
 
   const sampleComplaint: ComplaintItem = {
     id: 101,
@@ -87,68 +113,118 @@ export const DevUiPage: React.FC = () => {
   ];
 
   return (
-    <div className="space-y-12 py-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 border-b border-stone-200 dark:border-stone-800 pb-6">
-        <div>
-          <span className="text-xs font-mono font-bold text-[#800000] dark:text-rose-400 uppercase">
-            Storybook Showroom
-          </span>
-          <h1 className="text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white">
-            Design System & Shared Components (/dev/ui)
-          </h1>
-          <p className="mt-1 text-xs text-stone-500">
-            Preview of all civic UI primitives, states, palettes, and light/dark theme contrast.
-          </p>
-        </div>
+    <div className="space-y-12 py-6 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 font-sans">
+      {/* PageHeader Primitive & Breadcrumbs */}
+      <PageHeader
+        breadcrumbs={[
+          { label: 'System', href: '/' },
+          { label: 'Developer Suite', href: '/dev/ui' },
+          { label: 'Design Tokens & 16 Primitives Showroom' },
+        ]}
+        title="Design System & UI Primitives Showroom"
+        subtitle="Live showroom validating the 16 core UI primitives, color tokens, WCAG AA compliance, and dark/light contrast across Tamil Nadu civic interfaces."
+        badge={
+          <Badge variant="primary" size="sm">
+            Milestone B2 Active
+          </Badge>
+        }
+        action={
+          <div className="flex items-center gap-2">
+            <LanguageToggle />
+            <ThemeToggle />
+            <NotificationBell />
+            <Button
+              variant="primary"
+              size="sm"
+              onClick={() => toast.success('Sonner Toast notification working!')}
+            >
+              Trigger Toast
+            </Button>
+          </div>
+        }
+      />
 
-        <div className="flex items-center gap-2">
-          <LanguageToggle />
-          <ThemeToggle />
-          <NotificationBell />
-        </div>
-      </div>
-
-      {/* 1. Palette Swatches */}
+      {/* 1. Palette Tokens */}
       <section className="space-y-4">
-        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider flex items-center gap-2">
+          <Layers className="w-4 h-4 text-primary" />
           1. Brand Palette Tokens
         </h2>
         <div className="grid grid-cols-2 sm:grid-cols-6 gap-3 text-xs">
-          <div className="rounded-xl p-3 bg-[#800000] text-white font-mono">
+          <div className="rounded-xl p-3 bg-primary text-white font-mono shadow-xs">
             <span className="block font-bold">Namma Crimson</span>
-            <span className="text-[10px] opacity-80">#800000</span>
+            <span className="text-[10px] opacity-80">#800000 / var(--color-primary)</span>
           </div>
-          <div className="rounded-xl p-3 bg-teal-600 text-white font-mono">
+          <div className="rounded-xl p-3 bg-teal-600 text-white font-mono shadow-xs">
             <span className="block font-bold">Civic Teal</span>
             <span className="text-[10px] opacity-80">#0D9488</span>
           </div>
-          <div className="rounded-xl p-3 bg-amber-500 text-white font-mono">
+          <div className="rounded-xl p-3 bg-amber-500 text-white font-mono shadow-xs">
             <span className="block font-bold">Warm Amber</span>
             <span className="text-[10px] opacity-80">#D97706</span>
           </div>
-          <div className="rounded-xl p-3 bg-red-600 text-white font-mono">
+          <div className="rounded-xl p-3 bg-rose-600 text-white font-mono shadow-xs">
             <span className="block font-bold">Breach Red</span>
             <span className="text-[10px] opacity-80">#DC2626</span>
           </div>
-          <div className="rounded-xl p-3 bg-emerald-600 text-white font-mono">
+          <div className="rounded-xl p-3 bg-emerald-600 text-white font-mono shadow-xs">
             <span className="block font-bold">Verified Green</span>
             <span className="text-[10px] opacity-80">#16A34A</span>
           </div>
-          <div className="rounded-xl p-3 bg-stone-800 text-white font-mono">
-            <span className="block font-bold">Stone Surface</span>
-            <span className="text-[10px] opacity-80">#1C1917</span>
+          <div className="rounded-xl p-3 bg-surface border border-border text-foreground font-mono shadow-xs">
+            <span className="block font-bold">Semantic Surface</span>
+            <span className="text-[10px] opacity-80">var(--color-surface)</span>
           </div>
         </div>
       </section>
 
-      {/* 2. Status Badges & Priorities */}
+      {/* 2. Button Primitives */}
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          2. Status Badges & Priority Indicators
+          2. Button Primitive Variants & Sizes
         </h2>
-        <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 space-y-6">
+        <Card className="p-6 space-y-4">
+          <div className="flex flex-wrap gap-3 items-center">
+            <Button variant="primary" size="md">Primary Button</Button>
+            <Button variant="secondary" size="md">Secondary Button</Button>
+            <Button variant="outline" size="md">Outline Button</Button>
+            <Button variant="ghost" size="md">Ghost Button</Button>
+            <Button variant="destructive" size="md">Destructive Button</Button>
+            <Button variant="link" size="md">Link Style</Button>
+            <Button variant="primary" size="md" loading>Loading State</Button>
+          </div>
+          <div className="flex flex-wrap gap-3 items-center pt-2 border-t border-border">
+            <span className="text-xs text-stone-500">Sizes:</span>
+            <Button variant="primary" size="sm">Small (sm)</Button>
+            <Button variant="primary" size="md">Medium (md)</Button>
+            <Button variant="primary" size="lg">Large (lg)</Button>
+            <Button variant="primary" size="icon"><Sparkles className="w-4 h-4" /></Button>
+          </div>
+        </Card>
+      </section>
+
+      {/* 3. Badge & Status Indicators */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+          3. Badge Primitive Variants & SLA Chips
+        </h2>
+        <Card className="p-6 space-y-6">
           <div>
-            <span className="text-xs font-semibold text-stone-400 block mb-2">All 7 State Machine Statuses</span>
+            <span className="text-xs font-semibold text-stone-400 block mb-2">Badge Variants</span>
+            <div className="flex flex-wrap gap-2.5">
+              <Badge variant="primary" size="md">Primary</Badge>
+              <Badge variant="secondary" size="md">Secondary</Badge>
+              <Badge variant="outline" size="md">Outline</Badge>
+              <Badge variant="success" size="md" dot>Success Dot</Badge>
+              <Badge variant="warning" size="md" dot>Warning Dot</Badge>
+              <Badge variant="destructive" size="md" dot>Destructive Dot</Badge>
+              <Badge variant="info" size="md">Info</Badge>
+              <Badge variant="neutral" size="md">Neutral</Badge>
+            </div>
+          </div>
+
+          <div>
+            <span className="text-xs font-semibold text-stone-400 block mb-2">State Machine Badges</span>
             <div className="flex flex-wrap gap-2.5">
               <StatusBadge status="submitted" />
               <StatusBadge status="assigned" />
@@ -161,30 +237,25 @@ export const DevUiPage: React.FC = () => {
           </div>
 
           <div>
-            <span className="text-xs font-semibold text-stone-400 block mb-2">Priority Levels</span>
+            <span className="text-xs font-semibold text-stone-400 block mb-2">Priority Dots & SLA Chips</span>
             <div className="flex flex-wrap gap-6 items-center">
               <PriorityDot priority="low" />
               <PriorityDot priority="medium" />
               <PriorityDot priority="high" />
               <PriorityDot priority="critical" />
-            </div>
-          </div>
-
-          <div>
-            <span className="text-xs font-semibold text-stone-400 block mb-2">SLA Engine Chips</span>
-            <div className="flex flex-wrap gap-3">
+              <div className="h-4 w-px bg-stone-300 dark:bg-stone-700 mx-2" />
               <SLAChip slaStatus="within_sla" remainingHours={24.5} elapsedPct={48} />
               <SLAChip slaStatus="approaching" remainingHours={5.2} elapsedPct={82} />
               <SLAChip slaStatus="breached" remainingHours={-8.0} elapsedPct={116} />
             </div>
           </div>
-        </div>
+        </Card>
       </section>
 
-      {/* 3. Stat Cards */}
+      {/* 4. StatCard Primitive */}
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          3. StatCard Telemetry (with Deltas)
+          4. StatCard Primitive (Deltas & Semantics)
         </h2>
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <StatCard
@@ -211,37 +282,172 @@ export const DevUiPage: React.FC = () => {
         </div>
       </section>
 
-      {/* 4. Stepper & Interactive Star Rating */}
+      {/* 5. Input, Select, FilterBar, and ExportButton */}
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          4. Stepper, Star Rating & Dropzone
+          5. FilterBar, Input, Select, and ExportButton Primitives
         </h2>
-        <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 space-y-6">
+        <Card className="p-6 space-y-4">
+          <FilterBar
+            searchValue={filterSearch}
+            onSearchChange={setFilterSearch}
+            searchPlaceholder="Filter grievances, locations, or IDs..."
+            actions={
+              <ExportButton
+                data={[{ id: 1, title: 'Sample' }]}
+                filename="sample-export"
+                title="Export Filtered"
+              />
+            }
+          >
+            <div className="w-48">
+              <Select
+                value={filterDept}
+                onChange={(e) => setFilterDept(e.target.value)}
+              >
+                <option value="all">All Departments</option>
+                <option value="roads">Roads & Drains</option>
+                <option value="water">Water Supply</option>
+                <option value="sanitation">Solid Waste</option>
+              </Select>
+            </div>
+          </FilterBar>
+
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-4 border-t border-border">
+            <div>
+              <label className="text-xs font-semibold text-stone-600 dark:text-stone-400 block mb-1">Standard Input</label>
+              <Input placeholder="Enter text..." />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-stone-600 dark:text-stone-400 block mb-1">Disabled Input</label>
+              <Input placeholder="Disabled state" disabled />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-stone-600 dark:text-stone-400 block mb-1">Input with Error</label>
+              <Input placeholder="Invalid field" error="Invalid field value" />
+            </div>
+          </div>
+        </Card>
+      </section>
+
+      {/* 6. Table Primitive */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+          6. Table Primitive
+        </h2>
+        <Card className="overflow-hidden">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead>Reference</TableHead>
+                <TableHead>Category</TableHead>
+                <TableHead>Ward</TableHead>
+                <TableHead>Priority</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Actions</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              <TableRow>
+                <TableCell className="font-mono font-bold text-primary">GOV-2026-000101</TableCell>
+                <TableCell>Potholes on Road</TableCell>
+                <TableCell>Ward 51 (Royapuram)</TableCell>
+                <TableCell><PriorityDot priority="high" /></TableCell>
+                <TableCell><StatusBadge status="in_progress" /></TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="sm">Inspect</Button>
+                </TableCell>
+              </TableRow>
+              <TableRow>
+                <TableCell className="font-mono font-bold text-primary">GOV-2026-000102</TableCell>
+                <TableCell>Garbage Overflow</TableCell>
+                <TableCell>Ward 114 (T. Nagar)</TableCell>
+                <TableCell><PriorityDot priority="critical" /></TableCell>
+                <TableCell><StatusBadge status="submitted" /></TableCell>
+                <TableCell>
+                  <Button variant="ghost" size="sm">Inspect</Button>
+                </TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </Card>
+      </section>
+
+      {/* 7. Skeleton & EmptyState */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+          7. Skeleton & EmptyState Primitives
+        </h2>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
+          <Card className="p-6 space-y-4">
+            <span className="text-xs font-semibold text-stone-400 block">Skeleton Shimmer State</span>
+            <div className="flex items-center gap-4">
+              <Skeleton className="h-12 w-12 rounded-full" />
+              <div className="space-y-2 flex-1">
+                <Skeleton className="h-4 w-3/4 rounded" />
+                <Skeleton className="h-3 w-1/2 rounded" />
+              </div>
+            </div>
+            <Skeleton className="h-20 w-full rounded-xl" />
+          </Card>
+
+          <EmptyState
+            title="No Active Violations Reported"
+            description="Your selected ward currently has no overdue or open civic issues."
+            action={
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={() => setModalOpen(true)}
+              >
+                Launch Demo Modal
+              </Button>
+            }
+          />
+        </div>
+      </section>
+
+      {/* 8. Modal Primitive */}
+      <Modal
+        isOpen={modalOpen}
+        onClose={() => setModalOpen(false)}
+        title="Modal Primitive (Accessible Dialog)"
+        description="Supports focus trapping, escape key dismissal, accessible header, and customizable footer."
+        footer={
+          <div className="flex items-center justify-end gap-2">
+            <Button variant="outline" size="sm" onClick={() => setModalOpen(false)}>
+              Cancel
+            </Button>
+            <Button variant="primary" size="sm" onClick={() => { setModalOpen(false); toast.success('Modal confirmed!'); }}>
+              Confirm Action
+            </Button>
+          </div>
+        }
+      >
+        <div className="py-2 text-xs text-stone-600 dark:text-stone-300 space-y-2 leading-relaxed">
+          <p>
+            The Modal primitive replaces fragmented dialogs across all 18 routes in AI-GovInsight.
+            It ensures WCAG AA color compliance, clean padding, and responsive full-width bounds on mobile devices.
+          </p>
+        </div>
+      </Modal>
+
+      {/* 9. Stepper, Star Rating & Dropzone */}
+      <section className="space-y-4">
+        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
+          9. Stepper, Star Rating & Dropzone
+        </h2>
+        <Card className="p-6 space-y-6">
           <div>
             <span className="text-xs font-semibold text-stone-400 block mb-2">Multi-Step Form Stepper</span>
             <Stepper
               steps={['Describe Issue', 'Pin Location', 'Review & Evidence']}
               currentStep={currentStepperStep}
             />
-            <div className="flex gap-2 mt-2">
-              <button
-                onClick={() => setCurrentStepperStep(1)}
-                className="px-2.5 py-1 text-xs rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300"
-              >
-                Step 1
-              </button>
-              <button
-                onClick={() => setCurrentStepperStep(2)}
-                className="px-2.5 py-1 text-xs rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300"
-              >
-                Step 2
-              </button>
-              <button
-                onClick={() => setCurrentStepperStep(3)}
-                className="px-2.5 py-1 text-xs rounded border border-stone-200 dark:border-stone-700 text-stone-700 dark:text-stone-300"
-              >
-                Step 3
-              </button>
+            <div className="flex gap-2 mt-3">
+              <Button variant="outline" size="sm" onClick={() => setCurrentStepperStep(1)}>Step 1</Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentStepperStep(2)}>Step 2</Button>
+              <Button variant="outline" size="sm" onClick={() => setCurrentStepperStep(3)}>Step 3</Button>
             </div>
           </div>
 
@@ -265,13 +471,13 @@ export const DevUiPage: React.FC = () => {
               onClear={() => setDemoFile(null)}
             />
           </div>
-        </div>
+        </Card>
       </section>
 
-      {/* 5. Complaint Card & Timeline */}
+      {/* 10. ComplaintCard & Action Timeline */}
       <section className="space-y-4">
         <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          5. ComplaintCard & Action Timeline
+          10. ComplaintCard & Action Timeline
         </h2>
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           <div>
@@ -279,41 +485,10 @@ export const DevUiPage: React.FC = () => {
             <ComplaintCard complaint={sampleComplaint} linkPrefix="/complaints" />
           </div>
 
-          <div className="rounded-2xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6">
+          <Card className="p-6">
             <span className="text-xs font-semibold text-stone-400 block mb-4">Audit Timeline Primitive</span>
             <Timeline items={sampleTimelineItems} />
-          </div>
-        </div>
-      </section>
-
-      {/* 6. EmptyState & Modals */}
-      <section className="space-y-4">
-        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          6. EmptyState & Accessible Dialog
-        </h2>
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-center">
-          <EmptyState
-            title="No Active Violations Reported"
-            description="Your selected ward currently has no overdue or open civic issues."
-            action={
-              <button
-                type="button"
-                onClick={() => setDialogOpen(true)}
-                className="rounded-xl bg-[#800000] hover:bg-[#680000] px-4 py-2 text-xs font-bold text-white transition shadow-sm"
-              >
-                Open Demo Dialog
-              </button>
-            }
-          />
-
-          <ConfirmDialog
-            isOpen={dialogOpen}
-            title="Design System Demo Dialog"
-            description="This accessible modal supports focus rings, backdrop blurring, keyboard escape, and confirmation callbacks."
-            confirmLabel="Confirm Action"
-            onConfirm={() => setDialogOpen(false)}
-            onCancel={() => setDialogOpen(false)}
-          />
+          </Card>
         </div>
       </section>
     </div>

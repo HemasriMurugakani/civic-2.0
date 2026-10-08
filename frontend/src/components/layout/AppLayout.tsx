@@ -2,157 +2,78 @@ import React, { useState } from 'react';
 import { Outlet, Link, useLocation, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
-  LayoutDashboard, PlusCircle, Search, Kanban, BarChart3,
-  Map, Database, Palette, LogOut, Menu, X, Shield, Trophy,
-  ChevronLeft, ChevronRight, User as UserIcon, Landmark, Users, GraduationCap, TreePine
+  Menu, X, LogOut, LayoutDashboard, PlusCircle, Search,
+  ChevronRight, Megaphone, Home
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { LanguageToggle, ThemeToggle, NotificationBell } from '../common/CommonUi';
 import { NammaLogo } from '../common/NammaLogo';
-import { UserRole } from '@/lib/types';
+import { NammaSidebar } from './NammaSidebar';
+import { Button } from '@/components/ui/Button';
 
 export const AppLayout: React.FC = () => {
   const { user, logout } = useAuth();
   const { t } = useTranslation();
   const location = useLocation();
   const navigate = useNavigate();
-  const [collapsed, setCollapsed] = useState(false);
+
+  const [desktopCollapsed, setDesktopCollapsed] = useState(false);
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const isLandingPage = location.pathname === '/';
-  const isNammaStandalone =
-    location.pathname === '/report' ||
-    location.pathname === '/issues' ||
-    location.pathname.startsWith('/issues/') ||
-    location.pathname === '/projects' ||
-    location.pathname.startsWith('/projects/') ||
-    location.pathname === '/community' ||
-    location.pathname.startsWith('/community/') ||
-    location.pathname === '/education' ||
-    location.pathname.startsWith('/education/') ||
-    location.pathname.startsWith('/verify/') ||
-    location.pathname === '/spots' ||
-    location.pathname.startsWith('/spots/') ||
-    location.pathname === '/login' ||
-    location.pathname === '/register' ||
-    location.pathname === '/track';
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
 
   const handleLogout = () => {
     logout();
     navigate('/');
   };
 
-  // Nav links tailored by role
-  const getNavLinks = () => {
-    const role = user?.role || 'citizen';
-    const links = [];
-
-    if (role === 'citizen') {
-      links.push(
-        { path: '/dashboard', label: t('nav.dashboard'), icon: LayoutDashboard },
-        { path: '/report', label: t('nav.fileComplaint'), icon: PlusCircle },
-        { path: '/issues', label: 'Issues board & map', icon: Search },
-        { path: '/projects', label: 'Projects Tracker', icon: Landmark },
-        { path: '/community', label: 'Community Hub', icon: Users },
-        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
-        { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
-        { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
-      );
-    } else if (role === 'officer') {
-      links.push(
-        { path: '/officer', label: t('nav.kanban'), icon: Kanban },
-        { path: '/issues', label: 'Issues board & map', icon: Search },
-        { path: '/projects', label: 'Projects Tracker', icon: Landmark },
-        { path: '/community', label: 'Community Hub', icon: Users },
-        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
-        { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
-      );
-    } else if (role === 'dept_admin') {
-      links.push(
-        { path: '/department', label: 'Department KPIs', icon: BarChart3 },
-        { path: '/officer', label: 'Workbench', icon: Kanban },
-        { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
-        { path: '/community', label: 'Community Hub', icon: Users },
-        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
-        { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
-        { path: '/issues', label: 'Issues board & map', icon: Search },
-      );
-    } else if (role === 'gov_admin') {
-      links.push(
-        { path: '/governance', label: t('nav.governance'), icon: BarChart3 },
-        { path: '/gis', label: t('nav.gisMap'), icon: Map },
-        { path: '/projects', label: 'Infrastructure Projects', icon: Landmark },
-        { path: '/community', label: 'Community Hub', icon: Users },
-        { path: '/education', label: 'Civic Academy', icon: GraduationCap },
-        { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
-        { path: '/admin', label: t('nav.adminCrud'), icon: Database },
-        { path: '/officer', label: 'Workbench', icon: Kanban },
-        { path: '/issues', label: 'Issues board & map', icon: Search },
-      );
-    }
-
-    // Design system showroom available to all
-    links.push({ path: '/dev/ui', label: t('nav.devUi'), icon: Palette });
-    return links;
-  };
-
-  const navLinks = getNavLinks();
-
-  // If on standalone NammaTN pages (/report, /issues, /issues/:id, /login, /register, /track), render cleanly
-  if (isNammaStandalone) {
-    return (
-      <div className="min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-        <Outlet />
-      </div>
-    );
-  }
-
-  // If on public home page, render dedicated full-width NammaTN layout
+  // 1. Full-width Landing Page Layout
   if (isLandingPage) {
     return (
-      <div className="min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100 flex flex-col">
-        {/* NammaTN Sticky Header (Exactly matching screenshots 1-5) */}
-        <header className="sticky top-0 z-40 w-full border-b border-stone-200/80 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md">
+      <div className="min-h-screen bg-page text-textColor flex flex-col font-sans">
+        {/* Sticky Top Header */}
+        <header className="sticky top-0 z-40 w-full border-b border-border bg-white/95 dark:bg-stone-900/95 backdrop-blur-md">
           <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between">
-            {/* Left: Brand Logo & Primary Nav */}
+            {/* Left: Brand Logo & Links */}
             <div className="flex items-center gap-8">
               <NammaLogo size="md" />
 
-              <nav className="hidden md:flex items-center gap-6 text-sm font-semibold">
+              <nav className="hidden md:flex items-center gap-6 text-xs sm:text-sm font-semibold">
                 <Link
                   to="/report"
-                  className="text-[#800000] dark:text-rose-400 hover:text-[#680000] font-bold transition"
+                  className="text-[#800000] dark:text-rose-400 hover:text-[#680000] font-bold transition min-h-[44px] flex items-center"
                 >
                   Report
                 </Link>
                 <Link
                   to="/issues"
-                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition min-h-[44px] flex items-center"
                 >
                   Track
                 </Link>
                 <Link
                   to="/projects"
-                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition min-h-[44px] flex items-center"
                 >
                   Projects
                 </Link>
                 <Link
                   to="/governance"
-                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition min-h-[44px] flex items-center"
                 >
                   Government
                 </Link>
                 <Link
                   to="/gis"
-                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                  className="text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition min-h-[44px] flex items-center"
                 >
-                  Tamil Nadu
+                  Tamil Nadu Map
                 </Link>
               </nav>
             </div>
 
-            {/* Right Actions */}
+            {/* Right: Actions */}
             <div className="flex items-center gap-3">
               <LanguageToggle variant="pill" />
               <ThemeToggle />
@@ -160,31 +81,41 @@ export const AppLayout: React.FC = () => {
               {user ? (
                 <div className="flex items-center gap-3 pl-2">
                   <Link
-                    to={user.role === 'citizen' ? '/dashboard' : user.role === 'officer' ? '/officer' : '/department'}
-                    className="flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 text-xs font-bold text-[#800000] dark:text-rose-300 hover:bg-rose-100"
+                    to={
+                      user.role === 'citizen'
+                        ? '/dashboard'
+                        : user.role === 'officer'
+                        ? '/officer'
+                        : user.role === 'dept_admin'
+                        ? '/department'
+                        : '/governance'
+                    }
+                    className="flex items-center gap-2 rounded-xl bg-rose-50 dark:bg-rose-950/60 px-3 py-1.5 text-xs font-bold text-[#800000] dark:text-rose-300 hover:bg-rose-100 min-h-[38px]"
                   >
                     <span>{user.name.split(' ')[0]}</span>
-                    <span className="text-[10px] text-stone-500 font-normal capitalize">({user.role.replace('_', ' ')})</span>
+                    <span className="text-[10px] text-stone-500 font-normal capitalize">
+                      ({user.role.replace('_', ' ')})
+                    </span>
                   </Link>
                   <button
                     onClick={handleLogout}
-                    className="p-1.5 text-stone-400 hover:text-rose-600 rounded-lg hover:bg-stone-100 dark:hover:bg-stone-800"
+                    className="p-2 text-stone-400 hover:text-rose-600 rounded-xl hover:bg-stone-100 dark:hover:bg-stone-800 min-h-[38px] min-w-[38px] flex items-center justify-center"
                     title="Sign Out"
                   >
                     <LogOut className="h-4 w-4" />
                   </button>
                 </div>
               ) : (
-                <div className="flex items-center gap-3 pl-2">
+                <div className="flex items-center gap-2 pl-2">
                   <Link
                     to="/login"
-                    className="text-xs font-semibold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white transition"
+                    className="text-xs font-bold text-stone-700 dark:text-stone-300 hover:text-stone-900 dark:hover:text-white px-3 py-2 min-h-[44px] flex items-center"
                   >
                     Sign in
                   </Link>
                   <Link
                     to="/register"
-                    className="rounded-xl bg-[#800000] hover:bg-[#680000] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:scale-102"
+                    className="rounded-xl bg-[#800000] hover:bg-[#680000] px-4 py-2 text-xs font-bold text-white shadow-xs transition hover:scale-102 min-h-[40px] flex items-center"
                   >
                     Join free
                   </Link>
@@ -194,7 +125,6 @@ export const AppLayout: React.FC = () => {
           </div>
         </header>
 
-        {/* Full-width Landing Page Content */}
         <main className="flex-1 w-full">
           <Outlet />
         </main>
@@ -202,116 +132,83 @@ export const AppLayout: React.FC = () => {
     );
   }
 
-  return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      {/* Desktop Sidebar */}
-      <aside
-        className={`hidden md:flex flex-col border-r border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 transition-all duration-200 z-30 sticky top-0 h-screen ${
-          collapsed ? 'w-20' : 'w-64'
-        }`}
-      >
-        {/* Brand Header */}
-        <div className="flex h-16 items-center justify-between px-3.5 border-b border-stone-200/80 dark:border-stone-800">
-          <NammaLogo size={collapsed ? "sm" : "md"} showSubtitle={!collapsed} />
-          <button
-            type="button"
-            onClick={() => setCollapsed(!collapsed)}
-            className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-          >
-            {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
-          </button>
-        </div>
-
-        {/* Navigation items */}
-        <nav className="flex-1 space-y-1.5 p-3 overflow-y-auto">
-          {navLinks.map((item) => {
-            const Icon = item.icon;
-            const isActive = location.pathname === item.path;
-
-            return (
-              <Link
-                key={item.path}
-                to={item.path}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold transition-all ${
-                  isActive
-                    ? 'bg-rose-50 text-[#800000] dark:bg-rose-950/70 dark:text-rose-300 font-bold shadow-2xs border-l-3 border-[#800000]'
-                    : 'text-stone-600 hover:bg-stone-100 hover:text-stone-900 dark:text-stone-400 dark:hover:bg-stone-800 dark:hover:text-white'
-                }`}
-                title={collapsed ? item.label : undefined}
-              >
-                <Icon className={`h-4 w-4 shrink-0 ${isActive ? 'text-[#800000] dark:text-rose-400' : ''}`} />
-                {!collapsed && <span className="truncate">{item.label}</span>}
-              </Link>
-            );
-          })}
-        </nav>
-
-        {/* User Card & Logout */}
-        {user ? (
-          <div className="p-3 border-t border-stone-100 dark:border-stone-800">
-            <div className={`flex items-center gap-3 rounded-xl p-2 bg-stone-50 dark:bg-stone-800/50 ${collapsed ? 'justify-center' : ''}`}>
-              <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-rose-100 dark:bg-rose-950 text-[#800000] dark:text-rose-300 font-bold text-xs">
-                {user.name.charAt(0)}
-              </div>
-              {!collapsed && (
-                <div className="flex-1 min-w-0">
-                  <p className="text-xs font-bold truncate text-stone-900 dark:text-white">{user.name}</p>
-                  <p className="text-[10px] text-stone-400 capitalize">{user.role.replace('_', ' ')}</p>
-                </div>
-              )}
+  // 2. Auth Pages Layout (Centered, Focused)
+  if (isAuthPage) {
+    return (
+      <div className="min-h-screen bg-page text-textColor flex flex-col font-sans">
+        <header className="w-full border-b border-border bg-white/95 dark:bg-stone-900/95 py-3 px-4 sm:px-8">
+          <div className="max-w-7xl mx-auto flex items-center justify-between">
+            <NammaLogo size="md" />
+            <div className="flex items-center gap-3">
+              <LanguageToggle variant="pill" />
+              <ThemeToggle />
             </div>
-            <button
-              type="button"
-              onClick={handleLogout}
-              className={`mt-2 flex w-full items-center gap-2 rounded-xl px-3 py-2 text-xs font-medium text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40 transition ${
-                collapsed ? 'justify-center' : ''
-              }`}
-              title="Sign Out"
-            >
-              <LogOut className="h-4 w-4 shrink-0" />
-              {!collapsed && <span>{t('nav.logout')}</span>}
-            </button>
           </div>
-        ) : (
-          <div className="p-3 border-t border-stone-100 dark:border-stone-800">
-            <Link
-              to="/login"
-              className="flex w-full items-center justify-center rounded-xl bg-[#800000] hover:bg-[#680000] py-2 text-xs font-bold text-white shadow-xs"
-            >
-              {t('nav.login')}
-            </Link>
-          </div>
-        )}
-      </aside>
+        </header>
+        <main className="flex-1 flex items-center justify-center p-4 sm:p-8">
+          <Outlet />
+        </main>
+      </div>
+    );
+  }
 
-      {/* Main Content Area */}
+  // 3. Unified Portal Layout (Dashboard, Issues, Report, Projects, Community, Education, etc.)
+  return (
+    <div className="flex min-h-screen bg-page text-textColor font-sans">
+      {/* Persistent Desktop Sidebar */}
+      <NammaSidebar
+        collapsed={desktopCollapsed}
+        onToggleCollapse={() => setDesktopCollapsed(!desktopCollapsed)}
+        className="hidden md:flex sticky top-0 h-screen shrink-0"
+      />
+
+      {/* Main Column */}
       <div className="flex flex-1 flex-col min-w-0">
-        {/* Top Navbar */}
-        <header className="sticky top-0 z-20 flex h-16 items-center justify-between border-b border-stone-200/80 dark:border-stone-800 bg-white/90 dark:bg-stone-900/90 px-4 sm:px-8 backdrop-blur-md">
+        {/* Sticky Top Navbar */}
+        <header className="sticky top-0 z-30 flex h-16 items-center justify-between border-b border-border bg-white/90 dark:bg-stone-900/90 px-4 sm:px-8 backdrop-blur-md">
+          {/* Left: Mobile Hamburger & Title */}
           <div className="flex items-center gap-3">
             <button
               type="button"
-              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-              className="md:hidden rounded-lg p-2 text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
+              onClick={() => setMobileMenuOpen(true)}
+              className="md:hidden rounded-xl p-2 text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
+              aria-label="Open navigation menu"
             >
               <Menu className="h-5 w-5" />
             </button>
-            <div className="hidden sm:block">
-              <span className="text-xs font-medium text-stone-400">Government of Tamil Nadu</span>
-              <p className="text-sm font-bold text-stone-800 dark:text-stone-200">NammaTN Grievance Portal</p>
+
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline-block text-xs font-bold text-stone-400">
+                Government of Tamil Nadu
+              </span>
+              <span className="hidden sm:inline-block text-stone-300 dark:text-stone-700">|</span>
+              <span className="text-xs sm:text-sm font-bold text-[#800000] dark:text-rose-400">
+                NammaTN Civic Portal
+              </span>
             </div>
           </div>
 
+          {/* Right: Controls & User */}
           <div className="flex items-center gap-2.5">
             <LanguageToggle />
             <ThemeToggle />
             {user && <NotificationBell />}
-            {!user && (
+
+            {user ? (
+              <div className="hidden sm:flex items-center gap-2 pl-2">
+                <span className="text-xs font-bold text-stone-700 dark:text-stone-300">
+                  {user.name.split(' ')[0]}
+                </span>
+                <span className="rounded-md bg-stone-100 dark:bg-stone-800 px-2 py-0.5 text-[10px] font-semibold text-stone-500 capitalize">
+                  {user.role.replace('_', ' ')}
+                </span>
+              </div>
+            ) : (
               <Link
                 to="/login"
-                className="rounded-lg bg-[#800000] hover:bg-[#680000] px-3.5 py-1.5 text-xs font-semibold text-white shadow-xs transition"
+                className="hidden sm:inline-flex rounded-xl bg-[#800000] hover:bg-[#680000] px-3.5 py-2 text-xs font-bold text-white shadow-xs transition"
               >
-                {t('nav.login')}
+                {t('nav.login', 'Sign in')}
               </Link>
             )}
           </div>
@@ -319,89 +216,80 @@ export const AppLayout: React.FC = () => {
 
         {/* Mobile Slide-over Drawer */}
         {mobileMenuOpen && (
-          <div className="md:hidden fixed inset-0 z-40 bg-stone-900/50 backdrop-blur-xs flex">
-            <div className="w-72 bg-white dark:bg-stone-900 h-full p-4 flex flex-col justify-between shadow-2xl">
-              <div>
-                <div className="flex items-center justify-between pb-4 border-b border-stone-100 dark:border-stone-800">
-                  <NammaLogo size="sm" />
-                  <button onClick={() => setMobileMenuOpen(false)} className="p-1">
-                    <X className="h-5 w-5" />
-                  </button>
-                </div>
-                <nav className="mt-4 space-y-1">
-                  {navLinks.map((item) => (
-                    <Link
-                      key={item.path}
-                      to={item.path}
-                      onClick={() => setMobileMenuOpen(false)}
-                      className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-xs font-semibold text-stone-700 dark:text-stone-300 hover:bg-stone-100 dark:hover:bg-stone-800"
-                    >
-                      <item.icon className="h-4 w-4" />
-                      {item.label}
-                    </Link>
-                  ))}
-                </nav>
+          <div
+            className="md:hidden fixed inset-0 z-50 flex bg-stone-950/60 backdrop-blur-xs animate-in fade-in"
+            onClick={(e) => {
+              if (e.target === e.currentTarget) setMobileMenuOpen(false);
+            }}
+          >
+            <div className="w-72 bg-white dark:bg-stone-900 h-full flex flex-col shadow-2xl relative">
+              <div className="p-4 flex items-center justify-between border-b border-border">
+                <NammaLogo size="sm" />
+                <button
+                  type="button"
+                  onClick={() => setMobileMenuOpen(false)}
+                  className="rounded-xl p-2 text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 min-h-[44px] min-w-[44px] flex items-center justify-center"
+                  aria-label="Close menu"
+                >
+                  <X className="h-5 w-5" />
+                </button>
               </div>
 
-              {user ? (
-                <button
-                  onClick={() => {
-                    handleLogout();
-                    setMobileMenuOpen(false);
-                  }}
-                  className="flex items-center gap-2 text-xs font-semibold text-rose-600 p-2"
-                >
-                  <LogOut className="h-4 w-4" />
-                  {t('nav.logout')}
-                </button>
-              ) : (
-                <Link
-                  to="/login"
-                  onClick={() => setMobileMenuOpen(false)}
-                  className="w-full text-center py-2 bg-[#800000] hover:bg-[#680000] text-white rounded-xl text-xs font-bold"
-                >
-                  {t('nav.login')}
-                </Link>
-              )}
+              <div className="flex-1 overflow-y-auto">
+                <NammaSidebar
+                  collapsed={false}
+                  onItemClick={() => setMobileMenuOpen(false)}
+                  className="w-full border-r-0 min-h-0"
+                />
+              </div>
             </div>
             <div className="flex-1" onClick={() => setMobileMenuOpen(false)} />
           </div>
         )}
 
-        {/* Page View Body */}
-        <main className="flex-1 p-4 sm:p-8 max-w-7xl w-full mx-auto pb-20 md:pb-8">
+        {/* Page Content Body */}
+        <main className="flex-1 p-4 sm:p-6 lg:p-8 max-w-7xl w-full mx-auto pb-24 md:pb-8">
           <Outlet />
         </main>
 
-        {/* Citizen Mobile Bottom Tab Bar */}
+        {/* Mobile Citizen Bottom Navigation Bar */}
         {user?.role === 'citizen' && (
-          <nav className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-stone-200 dark:border-stone-800 bg-white/95 dark:bg-stone-900/95 backdrop-blur-md flex items-center justify-around py-2">
+          <nav
+            aria-label="Mobile navigation"
+            className="md:hidden fixed bottom-0 left-0 right-0 z-30 border-t border-border bg-white/95 dark:bg-stone-900/95 backdrop-blur-md flex items-center justify-around py-1.5 shadow-lg"
+          >
             <Link
               to="/dashboard"
-              className={`flex flex-col items-center gap-1 text-[10px] font-medium ${
-                location.pathname === '/dashboard' ? 'text-[#800000] dark:text-rose-400 font-bold' : 'text-stone-500'
+              className={`flex flex-col items-center justify-center min-h-[48px] min-w-[64px] text-[10px] font-semibold ${
+                location.pathname === '/dashboard'
+                  ? 'text-[#800000] dark:text-rose-400 font-bold'
+                  : 'text-stone-500 dark:text-stone-400'
               }`}
             >
-              <LayoutDashboard className="h-4 w-4" />
-              <span>{t('nav.dashboard')}</span>
+              <LayoutDashboard className="h-5 w-5 mb-0.5" />
+              <span>Dashboard</span>
             </Link>
+
             <Link
               to="/report"
-              className="flex flex-col items-center gap-1 text-[10px] font-bold text-[#800000] dark:text-rose-300"
+              className="flex flex-col items-center justify-center -mt-4 text-[10px] font-bold text-[#800000] dark:text-rose-300"
             >
-              <div className="flex h-9 w-9 -mt-4 items-center justify-center rounded-full bg-[#800000] text-white shadow-md">
-                <PlusCircle className="h-5 w-5" />
+              <div className="flex h-11 w-11 items-center justify-center rounded-full bg-[#800000] text-white shadow-lg active:scale-95 transition">
+                <PlusCircle className="h-6 w-6" />
               </div>
-              <span>Report</span>
+              <span className="mt-1 font-bold">Report</span>
             </Link>
+
             <Link
               to="/issues"
-              className={`flex flex-col items-center gap-1 text-[10px] font-medium ${
-                location.pathname === '/issues' ? 'text-[#800000] dark:text-rose-400 font-bold' : 'text-stone-500'
+              className={`flex flex-col items-center justify-center min-h-[48px] min-w-[64px] text-[10px] font-semibold ${
+                location.pathname === '/issues'
+                  ? 'text-[#800000] dark:text-rose-400 font-bold'
+                  : 'text-stone-500 dark:text-stone-400'
               }`}
             >
-              <Search className="h-4 w-4" />
-              <span>{t('nav.trackComplaint')}</span>
+              <Search className="h-5 w-5 mb-0.5" />
+              <span>Issues</span>
             </Link>
           </nav>
         )}

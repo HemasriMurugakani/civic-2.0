@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate } from 'react-router-dom';
+import { useParams, useNavigate, Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import {
   MapPin, Clock, Calendar, AlertTriangle, Send,
   ShieldCheck, RefreshCw, Star, ArrowLeft, Image as ImageIcon,
-  CheckCircle2, Sparkles, MessageSquare
+  CheckCircle2, Sparkles, MessageSquare, X
 } from 'lucide-react';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
@@ -12,7 +12,10 @@ import { ComplaintDetail, UserRole } from '@/lib/types';
 import { StatusBadge, PriorityDot, SLAChip } from '@/components/common/StatusBadges';
 import { Timeline } from '@/components/common/Timeline';
 import { StarRating } from '@/components/common/CommonUi';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
+import {
+  PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent,
+  Button, Badge, Modal, Input, Skeleton
+} from '@/components/ui';
 
 export const ComplaintDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -39,20 +42,19 @@ export const ComplaintDetailPage: React.FC = () => {
   const [reopenReason, setReopenReason] = useState('');
   const [reopening, setReopening] = useState(false);
 
-  // Escalate
-  const [escalating, setEscalating] = useState(false);
-
-  // Lightbox Image
+  // Lightbox
   const [lightboxImg, setLightboxImg] = useState<string | null>(null);
 
-  const fetchDetail = () => {
+  const fetchDetail = async () => {
     if (!id) return;
-    setLoading(true);
-    api
-      .getComplaintDetail(Number(id))
-      .then((data) => setComplaint(data))
-      .catch((err) => setError(err.message || 'Failed to load grievance details'))
-      .finally(() => setLoading(false));
+    try {
+      const data = await api.getComplaint(parseInt(id, 10));
+      setComplaint(data);
+    } catch (err: any) {
+      setError(err.message || 'Failed to load grievance');
+    } finally {
+      setLoading(false);
+    }
   };
 
   useEffect(() => {
@@ -61,78 +63,67 @@ export const ComplaintDetailPage: React.FC = () => {
 
   const handlePostComment = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newComment.trim() || !complaint) return;
-    setPostingComment(true);
+    if (!id || !newComment.trim()) return;
+
     try {
-      await api.addComment(complaint.id, newComment.trim(), false);
+      setPostingComment(true);
+      const res = await api.addComment(parseInt(id, 10), newComment.trim());
+      setComplaint((prev) => prev ? { ...prev, comments: [...prev.comments, res] } : null);
       setNewComment('');
-      fetchDetail();
-    } catch {}
-    finally {
+    } catch (err: any) {
+      alert(err.message || 'Failed to post comment');
+    } finally {
       setPostingComment(false);
     }
   };
 
-  const handleConfirmAndRate = async () => {
-    if (!complaint) return;
-    setSubmittingFeedback(true);
+  const handleCitizenVerify = async () => {
+    if (!id) return;
     try {
-      await api.submitFeedback(complaint.id, {
+      setSubmittingFeedback(true);
+      await api.verifyResolution(parseInt(id, 10), {
         rating: feedbackRating,
-        comment: feedbackText || undefined,
-        confirmed_resolved: true,
+        comment: feedbackText,
       });
       fetchDetail();
-    } catch {}
-    finally {
+    } catch (err: any) {
+      alert(err.message || 'Failed to submit verification');
+    } finally {
       setSubmittingFeedback(false);
     }
   };
 
   const handleReopen = async () => {
-    if (!complaint || !reopenReason.trim()) return;
-    setReopening(true);
+    if (!id || !reopenReason.trim()) return;
     try {
-      await api.reopenComplaint(complaint.id, reopenReason.trim());
+      setReopening(true);
+      await api.reopenComplaint(parseInt(id, 10), reopenReason.trim());
       setIsReopenOpen(false);
-      setReopenReason('');
       fetchDetail();
-    } catch {}
-    finally {
+    } catch (err: any) {
+      alert(err.message || 'Failed to reopen grievance');
+    } finally {
       setReopening(false);
-    }
-  };
-
-  const handleEscalate = async () => {
-    if (!complaint) return;
-    setEscalating(true);
-    try {
-      await api.escalateComplaint(complaint.reference_no, 'Overdue escalation triggered by citizen');
-      fetchDetail();
-    } catch {}
-    finally {
-      setEscalating(false);
     }
   };
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-[#800000] border-t-transparent" />
+      <div className="max-w-4xl mx-auto space-y-6 font-sans">
+        <Skeleton className="h-8 w-48 rounded-xl" />
+        <Skeleton className="h-64 w-full rounded-3xl" />
+        <Skeleton className="h-48 w-full rounded-2xl" />
       </div>
     );
   }
 
   if (error || !complaint) {
     return (
-      <div className="p-8 text-center space-y-4">
+      <div className="p-8 text-center space-y-4 font-sans">
         <p className="text-sm text-rose-600">{error || 'Grievance not found'}</p>
-        <button
-          onClick={() => navigate(-1)}
-          className="rounded-xl bg-stone-200 dark:bg-stone-800 text-stone-800 dark:text-stone-200 px-4 py-2 text-xs font-semibold"
-        >
+        <Button onClick={() => navigate(-1)} variant="secondary" size="sm">
           Go Back
-        </button>
+        </Button>
       </div>
     );
   }
@@ -143,27 +134,18 @@ export const ComplaintDetailPage: React.FC = () => {
 
   const isCitizenViewer = user?.role === 'citizen';
   const isResolvedState = complaint.status === 'resolved';
-  const isOverdue = complaint.sla_status === 'breached';
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
-      {/* Top Bar Navigation */}
-      <div className="flex items-center justify-between">
-        <button
-          type="button"
-          onClick={() => navigate(-1)}
-          className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-stone-800 dark:hover:text-stone-200 transition"
-        >
-          <ArrowLeft className="h-4 w-4" />
-          <span>Back</span>
-        </button>
-        <span className="font-mono text-xs font-bold text-[#800000] dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-3 py-1 rounded-lg border border-rose-200 dark:border-rose-900">
-          {complaint.reference_no}
-        </span>
-      </div>
+    <div className="max-w-4xl mx-auto space-y-6 font-sans">
+      <Breadcrumbs
+        items={[
+          { label: 'Dashboard', href: '/dashboard' },
+          { label: complaint.reference_no },
+        ]}
+      />
 
       {/* Main Header Card */}
-      <div className="rounded-3xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 sm:p-8 shadow-2xs space-y-4">
+      <Card className="p-6 sm:p-8 space-y-4">
         <div className="flex flex-wrap items-center justify-between gap-3">
           <StatusBadge status={complaint.status} size="lg" />
           <div className="flex items-center gap-2">
@@ -176,7 +158,7 @@ export const ComplaintDetailPage: React.FC = () => {
           </div>
         </div>
 
-        <h1 className="text-2xl font-bold tracking-tight text-stone-900 dark:text-white">
+        <h1 className="text-xl sm:text-2xl font-bold tracking-tight text-stone-900 dark:text-white">
           {complaint.title}
         </h1>
 
@@ -186,185 +168,109 @@ export const ComplaintDetailPage: React.FC = () => {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t border-stone-100 dark:border-stone-800 text-xs">
           <div>
-            <span className="text-stone-400 block text-[11px]">Department</span>
+            <span className="text-stone-400 block text-[11px] font-bold uppercase">Department</span>
             <span className="font-semibold text-stone-800 dark:text-stone-200">{complaint.department_name_en}</span>
           </div>
           <div>
-            <span className="text-stone-400 block text-[11px]">Category</span>
+            <span className="text-stone-400 block text-[11px] font-bold uppercase">Category</span>
             <span className="font-semibold text-stone-800 dark:text-stone-200">{categoryName}</span>
           </div>
           <div>
-            <span className="text-stone-400 block text-[11px]">Ward</span>
+            <span className="text-stone-400 block text-[11px] font-bold uppercase">Ward</span>
             <span className="font-semibold text-stone-800 dark:text-stone-200">{complaint.ward_name}</span>
           </div>
           <div>
-            <span className="text-stone-400 block text-[11px]">Assigned Officer</span>
+            <span className="text-stone-400 block text-[11px] font-bold uppercase">Assigned Officer</span>
             <span className="font-semibold text-stone-800 dark:text-stone-200">
               {complaint.assigned_officer_name || 'Under Assignment'}
             </span>
           </div>
         </div>
 
-        {/* Plain Language SLA Alert */}
+        {/* SLA Alert banner */}
         <div className="flex items-center justify-between rounded-xl bg-stone-50 dark:bg-stone-800/40 p-3 text-xs border border-stone-100 dark:border-stone-800">
           <div className="flex items-center gap-2 text-stone-600 dark:text-stone-300">
-            <Clock className="h-4 w-4 text-[#800000] dark:text-rose-400" />
-            <span>
-              Expected resolution by: <strong className="text-stone-900 dark:text-white">{new Date(complaint.sla_deadline).toLocaleString()}</strong>
-            </span>
+            <Clock className="h-4 w-4 text-stone-400 shrink-0" />
+            <span>Target Resolution: {new Date(complaint.sla_deadline).toLocaleString()}</span>
           </div>
-
-          {isCitizenViewer && isOverdue && complaint.status !== 'resolved' && complaint.status !== 'citizen_verified' && (
-            <button
-              type="button"
-              disabled={escalating}
-              onClick={handleEscalate}
-              className="rounded-lg bg-rose-600 px-3 py-1.5 text-xs font-bold text-white hover:bg-rose-700 shadow-xs"
-            >
-              {escalating ? 'Escalating...' : t('citizen.escalateButton')}
-            </button>
+          {complaint.assigned_officer_phone && (
+            <span className="font-mono text-stone-500">Contact: {complaint.assigned_officer_phone}</span>
           )}
         </div>
-      </div>
+      </Card>
 
-      {/* Citizen Resolution Verification & Rating Block (When Resolved) */}
+      {/* Verification / Resolution Card if Resolved */}
       {isCitizenViewer && isResolvedState && (
-        <div className="rounded-2xl border border-teal-200 dark:border-teal-900 bg-teal-50/60 dark:bg-teal-950/20 p-6 shadow-sm space-y-4">
-          <div className="flex items-center gap-2 text-teal-800 dark:text-teal-300 font-bold text-sm">
-            <ShieldCheck className="h-5 w-5" />
-            <span>Grievance Marked as Resolved by Field Officer</span>
+        <Card className="p-6 border-emerald-300 dark:border-emerald-800 bg-emerald-50/50 dark:bg-emerald-950/20 space-y-4">
+          <div className="flex items-center gap-2 text-emerald-800 dark:text-emerald-300 font-bold text-sm">
+            <CheckCircle2 className="h-5 w-5 text-emerald-600" />
+            <span>Field Officer Marked This Issue as Resolved!</span>
           </div>
-          <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-            Please verify whether the issue in your locality has been completely fixed. You can rate the resolution quality or reopen the complaint if the rectification is unsatisfactory.
+          <p className="text-xs text-stone-600 dark:text-stone-300">
+            Please rate the quality of service to verify completion and award Civic Points, or reopen if the hazard remains.
           </p>
 
           <div className="space-y-3 pt-2">
             <div>
-              <span className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                Rate Resolution Quality
-              </span>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Satisfaction Rating
+              </label>
               <StarRating
                 rating={feedbackRating}
-                interactive={true}
-                onChange={setFeedbackRating}
+                interactive
+                onChange={(r) => setFeedbackRating(r)}
                 size="lg"
               />
             </div>
 
-            <textarea
-              rows={2}
-              value={feedbackText}
-              onChange={(e) => setFeedbackText(e.target.value)}
-              placeholder="Optional remarks on work quality or officer responsiveness..."
-              className="w-full rounded-xl border border-teal-200 dark:border-teal-800 bg-white dark:bg-stone-900 p-2.5 text-xs text-stone-900 dark:text-white"
-            />
+            <div>
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                Feedback Comment
+              </label>
+              <textarea
+                rows={2}
+                value={feedbackText}
+                onChange={(e) => setFeedbackText(e.target.value)}
+                placeholder="Share your thoughts on the repair speed, quality and clean-up..."
+                className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-900 p-2.5 text-xs text-stone-900 dark:text-white"
+              />
+            </div>
 
             <div className="flex items-center gap-3 pt-2">
-              <button
-                type="button"
-                disabled={submittingFeedback}
-                onClick={handleConfirmAndRate}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-teal-600 px-5 py-2.5 text-xs font-bold text-white hover:bg-teal-700 shadow-sm"
+              <Button
+                variant="default"
+                size="sm"
+                isLoading={submittingFeedback}
+                leftIcon={<CheckCircle2 className="h-4 w-4" />}
+                onClick={handleCitizenVerify}
               >
-                <CheckCircle2 className="h-4 w-4" />
-                <span>Confirm Resolved & Submit Rating</span>
-              </button>
-
-              <button
-                type="button"
+                Confirm &amp; Award Points
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setIsReopenOpen(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl border border-rose-300 bg-white dark:bg-stone-900 px-4 py-2.5 text-xs font-bold text-rose-600 hover:bg-rose-50 dark:hover:bg-rose-950/40"
               >
-                <RefreshCw className="h-4 w-4" />
-                <span>{t('citizen.reopenButton')}</span>
-              </button>
+                Issue Not Fixed (Reopen)
+              </Button>
             </div>
           </div>
-        </div>
+        </Card>
       )}
 
-      {/* Reopen Confirmation Dialog */}
-      <ConfirmDialog
-        isOpen={isReopenOpen}
-        title={t('citizen.reopenModalTitle')}
-        description="Reopening will re-route this complaint back to the department and notify senior supervisors."
-        confirmLabel="Confirm Reopen"
-        variant="danger"
-        loading={reopening}
-        onConfirm={handleReopen}
-        onCancel={() => setIsReopenOpen(false)}
-      >
-        <div>
-          <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-            {t('citizen.reopenReasonLabel')}
-          </label>
-          <textarea
-            required
-            rows={3}
-            value={reopenReason}
-            onChange={(e) => setReopenReason(e.target.value)}
-            placeholder={t('citizen.reopenReasonPlaceholder')}
-            className="w-full rounded-xl border border-stone-200 dark:border-stone-700 p-2.5 text-xs bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white"
-          />
-        </div>
-      </ConfirmDialog>
-
-      {/* Evidence Attachments Gallery */}
-      {complaint.evidence.length > 0 && (
-        <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-          <div className="flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-white">
-            <ImageIcon className="h-4 w-4 text-[#800000] dark:text-rose-400" />
-            <span>Photographic Evidence & Site Inspection ({complaint.evidence.length})</span>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-            {complaint.evidence.map((ev) => (
-              <div
-                key={ev.id}
-                onClick={() => setLightboxImg(`/api/v1/uploads/${ev.file_path}`)}
-                className="group relative cursor-pointer overflow-hidden rounded-xl border border-stone-200/80 dark:border-stone-800 aspect-square bg-stone-100 dark:bg-stone-800"
-              >
-                <img
-                  src={`/api/v1/uploads/${ev.file_path}`}
-                  alt={ev.file_name}
-                  className="h-full w-full object-cover transition-transform group-hover:scale-105"
-                  onError={(e) => {
-                    // Fallback visual placeholder if disk sample
-                    (e.target as any).src = 'https://images.unsplash.com/photo-1578662996442-48f60103fc96?w=400';
-                  }}
-                />
-                <span className="absolute bottom-2 left-2 rounded-md bg-black/70 px-2 py-0.5 text-[10px] font-bold text-white uppercase backdrop-blur-xs">
-                  {ev.evidence_type}
-                </span>
-              </div>
-            ))}
-          </div>
-        </section>
-      )}
-
-      {/* Lightbox Modal */}
-      {lightboxImg && (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/80 p-4"
-          onClick={() => setLightboxImg(null)}
-        >
-          <img src={lightboxImg} alt="Enlarged" className="max-h-[85vh] max-w-full rounded-2xl shadow-2xl" />
-        </div>
-      )}
-
-      {/* Status History Timeline */}
-      <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-        <h2 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-          Action & Audit History
-        </h2>
+      {/* Action & Audit History Timeline */}
+      <Card className="p-6 space-y-4">
+        <CardTitle className="text-sm uppercase tracking-wider text-stone-500">
+          Action &amp; Audit History
+        </CardTitle>
         <Timeline items={complaint.history} />
-      </section>
+      </Card>
 
-      {/* Threaded Discussion Comments */}
-      <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
+      {/* Discussion Comments */}
+      <Card className="p-6 space-y-4">
         <div className="flex items-center gap-2 text-sm font-bold text-stone-900 dark:text-white">
           <MessageSquare className="h-4 w-4 text-[#800000] dark:text-rose-400" />
-          <span>Follow-up Discussion & Updates ({complaint.comments.length})</span>
+          <span>Follow-up Discussion &amp; Updates ({complaint.comments.length})</span>
         </div>
 
         <div className="space-y-3">
@@ -395,17 +301,52 @@ export const ComplaintDetailPage: React.FC = () => {
             value={newComment}
             onChange={(e) => setNewComment(e.target.value)}
             placeholder="Write a message or follow-up note..."
-            className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2 text-xs text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#800000]"
+            className="flex-1 rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2 text-xs text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#800000]/20 min-h-[40px]"
           />
-          <button
+          <Button
             type="submit"
-            disabled={postingComment}
-            className="rounded-xl bg-[#800000] hover:bg-[#680000] px-4 py-2 text-xs font-bold text-white transition disabled:opacity-50"
+            size="sm"
+            isLoading={postingComment}
+            className="min-h-[40px] px-5"
           >
-            {postingComment ? 'Sending...' : 'Send'}
-          </button>
+            Send
+          </Button>
         </form>
-      </section>
+      </Card>
+
+      {/* Reopen Modal */}
+      <Modal
+        isOpen={isReopenOpen}
+        onClose={() => setIsReopenOpen(false)}
+        title="Reopen Grievance"
+        description="Please describe why this issue is not satisfactorily resolved."
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setIsReopenOpen(false)}>
+              Cancel
+            </Button>
+            <Button
+              variant="destructive"
+              size="sm"
+              isLoading={reopening}
+              onClick={handleReopen}
+            >
+              Reopen Grievance
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-3">
+          <textarea
+            rows={3}
+            required
+            value={reopenReason}
+            onChange={(e) => setReopenReason(e.target.value)}
+            placeholder="Provide specific details (e.g., pothole refilled unevenly, street light failed again)..."
+            className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-800 p-3 text-xs text-stone-900 dark:text-white"
+          />
+        </div>
+      </Modal>
     </div>
   );
 };

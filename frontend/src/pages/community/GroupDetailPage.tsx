@@ -9,7 +9,10 @@ import { toast } from 'sonner';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { GroupDetail, GroupPostItem } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import {
+  PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent,
+  Button, Badge, Modal
+} from '@/components/ui';
 
 export const GroupDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -126,25 +129,19 @@ export const GroupDetailPage: React.FC = () => {
 
   if (loading) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211]">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 text-center py-20 text-stone-500 font-semibold text-xs">
-          Loading group forum...
-        </main>
+      <div className="max-w-4xl mx-auto p-8 text-center py-20 text-stone-500 font-semibold text-xs font-sans">
+        Loading group forum...
       </div>
     );
   }
 
   if (!group) {
     return (
-      <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211]">
-        <NammaSidebar className="hidden md:flex" />
-        <main className="flex-1 p-8 text-center py-20 text-stone-500">
-          <p className="font-bold">Group not found</p>
-          <Link to="/community?tab=groups" className="text-xs text-[#800000] font-bold mt-2 inline-block">
-            &larr; Back to Groups
-          </Link>
-        </main>
+      <div className="max-w-4xl mx-auto p-8 text-center py-20 text-stone-500 font-sans">
+        <p className="font-bold">Group not found</p>
+        <Link to="/community?tab=groups" className="text-xs text-[#800000] font-bold mt-2 inline-block">
+          &larr; Back to Groups
+        </Link>
       </div>
     );
   }
@@ -155,10 +152,7 @@ export const GroupDetailPage: React.FC = () => {
     user?.role === 'dept_admin';
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      <NammaSidebar className="hidden md:flex" />
-
-      <main className="flex-1 p-4 md:p-8 max-w-4xl mx-auto overflow-y-auto">
+    <div className="max-w-4xl mx-auto space-y-6 font-sans">
         <Link
           to="/community?tab=groups"
           className="inline-flex items-center gap-1.5 text-xs font-bold text-stone-500 hover:text-stone-900 dark:hover:text-white mb-4"
@@ -309,7 +303,6 @@ export const GroupDetailPage: React.FC = () => {
             ))
           )}
         </div>
-      </main>
 
       {/* Post Modal */}
       {showPostModal && (

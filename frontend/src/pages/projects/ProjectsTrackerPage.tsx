@@ -14,8 +14,11 @@ import { toast } from 'sonner';
 
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
-import { ProjectItem, ProjectStatus, ProjectSource } from '@/lib/types';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
+import { ProjectItem } from '@/lib/types';
+import {
+  PageHeader, Card, CardHeader, CardTitle, CardContent,
+  Button, Badge, Modal, Input, Select, EmptyState, Skeleton
+} from '@/components/ui';
 
 // Custom Map Marker for Projects
 function createProjectIcon(status: string, hasAlert: boolean) {
@@ -188,65 +191,54 @@ export const ProjectsTrackerPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100">
-      {/* Namma TN Sidebar */}
-      <NammaSidebar className="hidden md:flex" />
-
-      {/* Main Content Area */}
-      <main className="flex-1 p-4 md:p-8 max-w-7xl mx-auto overflow-y-auto">
-        {/* Top Header Banner */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6 pb-6 border-b border-stone-200 dark:border-stone-800">
-          <div>
-            <div className="flex items-center gap-2 mb-1">
-              <span className="inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-xs font-bold bg-[#800000]/10 text-[#800000] dark:bg-rose-950/60 dark:text-rose-400">
-                <HardHat className="w-3.5 h-3.5" />
-                Public Works & Transparency Portal
-              </span>
-              <span className="text-xs text-stone-400">• Tamil Nadu Open Governance</span>
-            </div>
-            <h1 className="text-2xl md:text-3xl font-black text-stone-900 dark:text-white tracking-tight">
-              Infrastructure Project Tracker
-            </h1>
-            <p className="text-sm text-stone-600 dark:text-stone-400 mt-1 max-w-2xl">
-              Real-time monitoring of civic capital expenditures, ground contractor progress, delay flags, and citizen community verifications across Tamil Nadu.
-            </p>
-          </div>
-
-          {/* Action Buttons for Admins */}
+    <div className="space-y-6 font-sans">
+      <PageHeader
+        title="Infrastructure Project Tracker"
+        subtitle="Real-time monitoring of civic capital expenditures, ground contractor progress, delay flags, and citizen community verifications across Tamil Nadu."
+        badge={
+          <Badge variant="primary" size="md">
+            Public Works & Transparency Portal
+          </Badge>
+        }
+        action={
           <div className="flex flex-wrap items-center gap-2.5">
             {isGovAdmin && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={handleSyncData}
-                disabled={syncLoading}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700/60 transition shadow-2xs text-stone-800 dark:text-stone-200"
+                isLoading={syncLoading}
+                leftIcon={<RefreshCw className="w-3.5 h-3.5" />}
                 title="Sync with Tamil Nadu Open Data Portal feed"
               >
-                <RefreshCw className={`w-3.5 h-3.5 text-[#800000] dark:text-rose-400 ${syncLoading ? 'animate-spin' : ''}`} />
-                <span>{syncLoading ? 'Syncing...' : 'Sync Open Data'}</span>
-              </button>
+                Sync Open Data
+              </Button>
             )}
 
             {canManage && (
-              <button
+              <Button
+                variant="outline"
+                size="sm"
                 onClick={() => setShowImportModal(true)}
-                className="flex items-center gap-2 px-3.5 py-2 rounded-xl text-xs font-bold bg-white dark:bg-stone-800 border border-stone-300 dark:border-stone-700 hover:bg-stone-50 dark:hover:bg-stone-700/60 transition shadow-2xs text-stone-800 dark:text-stone-200"
+                leftIcon={<Upload className="w-3.5 h-3.5 text-blue-600" />}
               >
-                <Upload className="w-3.5 h-3.5 text-blue-600" />
-                <span>Bulk Import CSV</span>
-              </button>
+                Bulk Import CSV
+              </Button>
             )}
 
             {canManage && (
-              <button
+              <Button
+                variant="default"
+                size="sm"
                 onClick={() => setShowCreateModal(true)}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000] transition shadow-xs"
+                leftIcon={<Plus className="w-4 h-4" />}
               >
-                <Plus className="w-4 h-4" />
-                <span>Add Project</span>
-              </button>
+                Add Project
+              </Button>
             )}
           </div>
-        </div>
+        }
+      />
 
         {/* Real-time Computed Stats Metric Row */}
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3.5 mb-6">
@@ -733,7 +725,6 @@ export const ProjectsTrackerPage: React.FC = () => {
             </div>
           </div>
         )}
-      </main>
 
       {/* Sync Report Modal */}
       {showSyncModal && syncReport && (

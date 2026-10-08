@@ -113,6 +113,18 @@ export const api = {
       body: JSON.stringify({ action }),
     }),
 
+  confirmPublicIssue: (id: string | number) =>
+    request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'confirm' }),
+    }),
+
+  disputePublicIssue: (id: string | number) =>
+    request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
+      method: 'POST',
+      body: JSON.stringify({ action: 'dispute' }),
+    }),
+
   createPublicIssue: (payload: any) =>
     request<any>('/public/issues', {
       method: 'POST',
@@ -132,6 +144,13 @@ export const api = {
   },
 
   getComplaintDetail: (id: number) => request<ComplaintDetail>(`/complaints/${id}`),
+  getComplaint: (id: number) => request<ComplaintDetail>(`/complaints/${id}`),
+
+  verifyResolution: (id: number, payload: { rating: number; comment?: string }) =>
+    request<any>(`/complaints/${id}/feedback`, {
+      method: 'POST',
+      body: JSON.stringify({ ...payload, confirmed_resolved: true }),
+    }),
 
   createComplaint: (payload: any) =>
     request<ComplaintItem>('/complaints', {

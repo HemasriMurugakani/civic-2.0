@@ -7,6 +7,7 @@ import {
 import { api } from '@/lib/api';
 import { PublicCertificateVerify } from '@/lib/types';
 import { NammaLogo } from '@/components/common/NammaLogo';
+import { Badge, Button, Card, EmptyState } from '@/components/ui';
 
 export const CertificateVerifyPage: React.FC = () => {
   const { code } = useParams<{ code: string }>();
@@ -32,55 +33,52 @@ export const CertificateVerifyPage: React.FC = () => {
   }, [code]);
 
   return (
-    <div className="min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100 flex flex-col justify-between">
+    <div className="min-h-screen bg-stone-50 dark:bg-stone-950 text-stone-900 dark:text-stone-100 flex flex-col justify-between font-sans">
       {/* Top Navigation */}
       <header className="border-b border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 px-6 py-4 flex items-center justify-between">
         <Link to="/" className="inline-flex items-center gap-2">
           <NammaLogo size="md" />
         </Link>
 
-        <Link
-          to="/education"
-          className="inline-flex items-center gap-1.5 px-4 py-2 rounded-xl text-xs font-bold border border-stone-200 dark:border-stone-700 hover:bg-stone-50"
-        >
-          <GraduationCap className="w-4 h-4 text-[#800000]" />
-          <span>Civic Academy</span>
+        <Link to="/education">
+          <Button variant="outline" size="sm" className="min-h-[44px]">
+            <GraduationCap className="w-4 h-4 mr-1.5 text-primary" />
+            Civic Academy
+          </Button>
         </Link>
       </header>
 
       {/* Main Verification Card */}
       <main className="flex-1 max-w-2xl mx-auto w-full p-4 md:p-8 flex items-center justify-center">
         {loading ? (
-          <div className="text-center space-y-3">
-            <div className="w-10 h-10 border-3 border-[#800000] border-t-transparent rounded-full animate-spin mx-auto" />
+          <div className="text-center space-y-3 py-12">
+            <div className="w-10 h-10 border-3 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
             <p className="text-xs text-stone-500 font-semibold">Verifying cryptographic credential with state registry...</p>
           </div>
         ) : error || !cert ? (
-          <div className="bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 rounded-3xl p-8 md:p-12 text-center shadow-lg space-y-4 w-full">
-            <div className="w-14 h-14 rounded-full bg-rose-50 text-rose-600 flex items-center justify-center mx-auto">
+          <Card className="p-8 md:p-12 text-center shadow-lg space-y-4 w-full">
+            <div className="w-14 h-14 rounded-full bg-rose-50 dark:bg-rose-950/50 text-rose-600 flex items-center justify-center mx-auto">
               <AlertTriangle className="w-8 h-8" />
             </div>
-            <h2 className="text-xl font-black text-stone-900 dark:text-white">Certificate Not Found</h2>
-            <p className="text-xs text-stone-500 max-w-md mx-auto">
+            <h2 className="text-xl font-bold text-stone-900 dark:text-white">Certificate Not Found</h2>
+            <p className="text-xs text-stone-500 max-w-md mx-auto leading-relaxed">
               The credential ID <strong>{code}</strong> could not be authenticated against the Government of Tamil Nadu Civic Competency database.
             </p>
             <div className="pt-2">
-              <Link
-                to="/education"
-                className="inline-flex px-5 py-2.5 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000]"
-              >
-                Explore Civic Courses
+              <Link to="/education">
+                <Button variant="primary" size="md">
+                  Explore Civic Courses
+                </Button>
               </Link>
             </div>
-          </div>
+          </Card>
         ) : (
-          <div className="bg-white dark:bg-stone-900 border-2 border-emerald-500/40 dark:border-emerald-500/30 rounded-3xl p-6 md:p-10 shadow-2xl space-y-6 w-full relative overflow-hidden">
+          <div className="bg-white dark:bg-stone-900 border-2 border-emerald-500/40 dark:border-emerald-500/30 rounded-3xl p-6 md:p-10 shadow-xl space-y-6 w-full relative overflow-hidden">
             {/* Status Pill */}
             <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-4">
-              <div className="flex items-center gap-2 text-emerald-600 font-bold text-xs bg-emerald-50 dark:bg-emerald-950/60 px-3 py-1.5 rounded-full">
-                <CheckCircle2 className="w-4 h-4" />
-                <span>OFFICIAL & VERIFIED CREDENTIAL</span>
-              </div>
+              <Badge variant="success" size="md" dot>
+                OFFICIAL & VERIFIED CREDENTIAL
+              </Badge>
 
               <span className="text-[11px] font-mono font-bold text-stone-400">
                 {cert.certificate_code}
@@ -92,10 +90,10 @@ export const CertificateVerifyPage: React.FC = () => {
               <div className="w-16 h-16 rounded-full bg-amber-500/10 flex items-center justify-center mx-auto border-2 border-amber-500/30">
                 <Award className="w-8 h-8 text-amber-600" />
               </div>
-              <h1 className="text-xs font-black uppercase tracking-wider text-amber-700 dark:text-amber-400">
+              <h1 className="text-xs font-bold uppercase tracking-wider text-amber-700 dark:text-amber-400">
                 Government of Tamil Nadu
               </h1>
-              <h2 className="text-xl md:text-2xl font-black text-stone-900 dark:text-white">
+              <h2 className="text-xl md:text-2xl font-bold text-stone-900 dark:text-white">
                 Certificate of Civic Competence
               </h2>
             </div>
@@ -103,7 +101,7 @@ export const CertificateVerifyPage: React.FC = () => {
             {/* Recipient Details */}
             <div className="bg-stone-50 dark:bg-stone-800/60 rounded-2xl p-6 border border-stone-200 dark:border-stone-800 text-center space-y-3">
               <div className="text-xs text-stone-500">This official credential was awarded to:</div>
-              <div className="text-2xl md:text-3xl font-black text-[#800000] dark:text-rose-400">
+              <div className="text-2xl md:text-3xl font-extrabold text-primary dark:text-rose-400">
                 {cert.recipient_name}
               </div>
               <div className="text-xs text-stone-600 dark:text-stone-300 max-w-md mx-auto leading-relaxed">
@@ -114,11 +112,11 @@ export const CertificateVerifyPage: React.FC = () => {
 
             {/* Scores and Issue Metadata */}
             <div className="grid grid-cols-2 gap-3 text-xs">
-              <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800">
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800">
                 <div className="text-[11px] text-stone-400">Demonstrated Score</div>
-                <div className="text-lg font-black text-emerald-600 mt-0.5">{cert.score}%</div>
+                <div className="text-lg font-bold text-emerald-600 mt-0.5">{cert.score}%</div>
               </div>
-              <div className="p-3 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800">
+              <div className="p-3.5 rounded-xl bg-stone-50 dark:bg-stone-800/40 border border-stone-100 dark:border-stone-800">
                 <div className="text-[11px] text-stone-400">Date of Issuance</div>
                 <div className="text-xs font-bold text-stone-800 dark:text-stone-200 mt-1">
                   {new Date(cert.issued_at).toLocaleDateString('en-IN', { dateStyle: 'long' })}
@@ -144,17 +142,18 @@ export const CertificateVerifyPage: React.FC = () => {
                 href={api.getCertificatePdfUrl(cert.certificate_code)}
                 target="_blank"
                 rel="noreferrer"
-                className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold bg-[#800000] text-white hover:bg-[#680000] transition shadow-md"
+                className="w-full sm:flex-1"
               >
-                <Download className="w-4 h-4" />
-                <span>Download High-Res PDF Copy</span>
+                <Button variant="primary" size="lg" className="w-full min-h-[44px]">
+                  <Download className="w-4 h-4 mr-2" />
+                  Download High-Res PDF Copy
+                </Button>
               </a>
 
-              <Link
-                to="/education"
-                className="w-full sm:flex-1 inline-flex items-center justify-center gap-2 py-3 rounded-xl text-xs font-bold border border-stone-200 dark:border-stone-700 hover:bg-stone-100 dark:hover:bg-stone-800 transition"
-              >
-                <span>Browse Academy Courses</span>
+              <Link to="/education" className="w-full sm:flex-1">
+                <Button variant="outline" size="lg" className="w-full min-h-[44px]">
+                  Browse Academy Courses
+                </Button>
               </Link>
             </div>
           </div>

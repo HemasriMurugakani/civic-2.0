@@ -3,20 +3,30 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Megaphone, MapPin, Compass, Landmark, Flag,
   BarChart3, Factory, Users, HeartPulse, Shield,
-  Droplets, Route, LogIn, LogOut, Globe, Monitor, Sun, MessageSquare, Trophy, GraduationCap,
-  TreePine, Flame
+  Droplets, Route, LogIn, LogOut, Globe, Moon, Sun,
+  MessageSquare, Trophy, GraduationCap, TreePine, Flame,
+  LayoutDashboard, Kanban, Map, Database, Palette,
+  ChevronLeft, ChevronRight, X
 } from 'lucide-react';
 import { NammaLogo } from '../common/NammaLogo';
 import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
+import { Button } from '@/components/ui/Button';
+import { Modal } from '@/components/ui/Modal';
+import { Badge } from '@/components/ui/Badge';
+import { cn } from '@/lib/utils';
 
 interface NammaSidebarProps {
-  onExploreModuleClick?: (moduleName: string) => void;
+  collapsed?: boolean;
+  onToggleCollapse?: () => void;
+  onItemClick?: () => void;
   className?: string;
 }
 
 export const NammaSidebar: React.FC<NammaSidebarProps> = ({
-  onExploreModuleClick,
+  collapsed = false,
+  onToggleCollapse,
+  onItemClick,
   className = '',
 }) => {
   const location = useLocation();
@@ -38,61 +48,101 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
       .catch(() => {});
   }, []);
 
-  const isCurrent = (path: string) =>
-    location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
+  const isCurrent = (path: string) => {
+    if (path === '/') return location.pathname === '/';
+    return location.pathname === path || location.pathname.startsWith(path + '/');
+  };
 
-  const forYouLinks = [
-    { path: '/', label: 'Home', icon: Home },
-    { path: '/report', label: 'Report an issue', icon: Megaphone },
-    { path: '/issues', label: 'Issues board & map', icon: MessageSquare },
-    { path: '/projects', label: 'Projects Tracker', icon: Landmark },
-    { path: '/community', label: 'Community Hub', icon: Users },
-    { path: '/education', label: 'Civic Academy', icon: GraduationCap },
-    { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
-    { path: '/campaigns', label: 'Seasonal Campaigns', icon: Flame },
-    { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
-  ];
+  const role = user?.role || 'public';
+
+  // Role-tailored navigation links
+  const getNavSections = () => {
+    const mainLinks = [
+      { path: '/', label: 'Home', icon: Home },
+    ];
+
+    if (role === 'citizen') {
+      mainLinks.push({ path: '/dashboard', label: 'My Dashboard', icon: LayoutDashboard });
+    } else if (role === 'officer') {
+      mainLinks.push({ path: '/officer', label: 'Officer Workbench', icon: Kanban });
+    } else if (role === 'dept_admin') {
+      mainLinks.push(
+        { path: '/department', label: 'Department KPIs', icon: BarChart3 },
+        { path: '/officer', label: 'Workbench', icon: Kanban }
+      );
+    } else if (role === 'gov_admin') {
+      mainLinks.push(
+        { path: '/governance', label: 'Governance KPIs', icon: BarChart3 },
+        { path: '/gis', label: 'GIS Hotspot Map', icon: Map },
+        { path: '/department', label: 'Departments', icon: LayoutDashboard },
+        { path: '/officer', label: 'Workbench', icon: Kanban },
+        { path: '/admin', label: 'Admin Database', icon: Database }
+      );
+    }
+
+    const civicLinks = [
+      { path: '/report', label: 'Report an issue', icon: Megaphone },
+      { path: '/issues', label: 'Issues board & map', icon: MessageSquare },
+      { path: '/projects', label: 'Projects Tracker', icon: Landmark },
+      { path: '/community', label: 'Community Hub', icon: Users },
+      { path: '/education', label: 'Civic Academy', icon: GraduationCap },
+      { path: '/spots', label: 'Adopt-a-Spot', icon: TreePine },
+      { path: '/campaigns', label: 'Seasonal Campaigns', icon: Flame },
+      { path: '/leaderboard', label: 'Leaderboard & Badges', icon: Trophy },
+      { path: '/dev/ui', label: 'Design System', icon: Palette },
+    ];
+
+    return { mainLinks, civicLinks };
+  };
+
+  const { mainLinks, civicLinks } = getNavSections();
 
   const exploreLinks = [
-    { path: '/', label: 'Overview', icon: Compass, isModule: false },
-    { path: '/governance', label: 'Government', icon: Landmark, isModule: false },
-    { label: 'Commitments & delivery', icon: Flag, isModule: true },
-    { label: 'Budget & spending', icon: BarChart3, isModule: true },
-    { label: 'Industries & investment', icon: Factory, isModule: true },
-    { label: 'Makkal Arangam', icon: Users, isModule: true },
-    { label: 'Hospitals', icon: HeartPulse, isModule: true },
-    { label: 'Police', icon: Shield, isModule: true },
-    { label: 'Water Bodies & Dams', icon: Droplets, isModule: true },
-    { label: 'Roads & Highways', icon: Route, isModule: true },
+    { label: 'Commitments & delivery', icon: Flag },
+    { label: 'Budget & spending', icon: BarChart3 },
+    { label: 'Industries & investment', icon: Factory },
+    { label: 'Makkal Arangam', icon: Users },
+    { label: 'Hospitals & Health', icon: HeartPulse },
+    { label: 'Police & Security', icon: Shield },
+    { label: 'Water Bodies & Dams', icon: Droplets },
+    { label: 'Roads & Highways', icon: Route },
   ];
-
-  const handleModuleClick = (label: string) => {
-    if (onExploreModuleClick) {
-      onExploreModuleClick(label);
-    } else {
-      setActiveModalModule(label);
-    }
-  };
 
   return (
     <aside
-      className={`w-64 shrink-0 flex flex-col justify-between border-r border-stone-200/90 dark:border-stone-800 bg-white/95 dark:bg-[#161311] min-h-screen text-stone-700 dark:text-stone-300 select-none ${className}`}
+      className={cn(
+        'flex flex-col justify-between border-r border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 min-h-screen text-stone-700 dark:text-stone-300 select-none transition-all duration-200',
+        collapsed ? 'w-20' : 'w-64',
+        className
+      )}
     >
       {/* Top Header & Brand */}
       <div>
-        <div className="p-4 border-b border-stone-100 dark:border-stone-800/80">
-          <NammaLogo size="md" />
+        <div className="h-16 px-4 flex items-center justify-between border-b border-stone-100 dark:border-stone-800/80">
+          <NammaLogo size={collapsed ? 'sm' : 'md'} showSubtitle={!collapsed} />
+          {onToggleCollapse && (
+            <button
+              type="button"
+              onClick={onToggleCollapse}
+              className="p-1.5 rounded-xl text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800 transition min-h-[36px] min-w-[36px] flex items-center justify-center"
+              title={collapsed ? 'Expand sidebar' : 'Collapse sidebar'}
+            >
+              {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+            </button>
+          )}
         </div>
 
         {/* Navigation Sections */}
-        <div className="p-3 space-y-6 overflow-y-auto max-h-[calc(100vh-270px)]">
-          {/* Section: FOR YOU */}
+        <div className="p-3 space-y-5 overflow-y-auto max-h-[calc(100vh-250px)]">
+          {/* Main / Role Navigation */}
           <div>
-            <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
-              FOR YOU
-            </div>
+            {!collapsed && (
+              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                PORTAL
+              </div>
+            )}
             <nav className="space-y-1">
-              {forYouLinks.map((item) => {
+              {mainLinks.map((item) => {
                 const Icon = item.icon;
                 const active = isCurrent(item.path);
 
@@ -100,342 +150,286 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
                   <Link
                     key={item.path}
                     to={item.path}
-                    className={`flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-xs font-semibold transition-all ${
+                    onClick={onItemClick}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all min-h-[40px]',
                       active
-                        ? 'border border-rose-600/90 bg-rose-50/70 dark:bg-rose-950/40 text-stone-900 dark:text-white font-bold shadow-2xs'
-                        : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white'
-                    }`}
+                        ? 'border border-[#800000]/30 bg-rose-50 text-[#800000] dark:bg-rose-950/60 dark:text-rose-300 font-bold shadow-2xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white',
+                      collapsed && 'justify-center px-0'
+                    )}
+                    title={collapsed ? item.label : undefined}
                   >
-                    <Icon className={`h-4 w-4 shrink-0 ${active ? 'text-[#800000] dark:text-rose-400' : 'text-stone-500'}`} />
-                    <span>{item.label}</span>
+                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#800000] dark:text-rose-400' : 'text-stone-500')} />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
                   </Link>
                 );
               })}
             </nav>
           </div>
 
-          {/* Section: EXPLORE */}
+          {/* Civic Services */}
           <div>
-            <div className="px-3 pb-2 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
-              EXPLORE
-            </div>
-            <nav className="space-y-0.5">
-              {exploreLinks.map((item, idx) => {
+            {!collapsed && (
+              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                CIVIC PLATFORM
+              </div>
+            )}
+            <nav className="space-y-1">
+              {civicLinks.map((item) => {
                 const Icon = item.icon;
-                if (item.isModule) {
+                const active = isCurrent(item.path);
+
+                return (
+                  <Link
+                    key={item.path}
+                    to={item.path}
+                    onClick={onItemClick}
+                    className={cn(
+                      'flex items-center gap-3 px-3 py-2.5 rounded-xl text-xs font-semibold transition-all min-h-[40px]',
+                      active
+                        ? 'border border-[#800000]/30 bg-rose-50 text-[#800000] dark:bg-rose-950/60 dark:text-rose-300 font-bold shadow-2xs'
+                        : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white',
+                      collapsed && 'justify-center px-0'
+                    )}
+                    title={collapsed ? item.label : undefined}
+                  >
+                    <Icon className={cn('h-4 w-4 shrink-0', active ? 'text-[#800000] dark:text-rose-400' : 'text-stone-500')} />
+                    {!collapsed && <span className="truncate">{item.label}</span>}
+                  </Link>
+                );
+              })}
+            </nav>
+          </div>
+
+          {/* Explore Modules (collapsed hides details) */}
+          {!collapsed && (
+            <div>
+              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
+                TRANSPARENCY
+              </div>
+              <nav className="space-y-0.5">
+                {exploreLinks.map((item, idx) => {
+                  const Icon = item.icon;
                   return (
                     <button
                       key={idx}
                       type="button"
-                      onClick={() => handleModuleClick(item.label)}
-                      className="w-full flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white transition text-left"
+                      onClick={() => setActiveModalModule(item.label)}
+                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white transition text-left min-h-[36px]"
                     >
                       <Icon className="h-4 w-4 shrink-0 text-stone-400" />
                       <span className="truncate">{item.label}</span>
                     </button>
                   );
-                }
-
-                const active = isCurrent(item.path || '');
-                return (
-                  <Link
-                    key={idx}
-                    to={item.path || '/'}
-                    className={`flex items-center gap-3 px-3.5 py-2 rounded-xl text-xs font-medium transition ${
-                      active
-                        ? 'bg-stone-100 dark:bg-stone-800 text-stone-900 dark:text-white font-bold'
-                        : 'text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white'
-                    }`}
-                  >
-                    <Icon className="h-4 w-4 shrink-0 text-stone-400" />
-                    <span className="truncate">{item.label}</span>
-                  </Link>
-                );
-              })}
-            </nav>
-          </div>
+                })}
+              </nav>
+            </div>
+          )}
         </div>
       </div>
 
       {/* Bottom Sticky CTA & Controls */}
-      <div className="p-3 border-t border-stone-200/90 dark:border-stone-800 bg-white/95 dark:bg-[#161311] space-y-2.5">
-        {/* Yellow Golden Action Button: Report an issue */}
-        <Link
-          to="/report"
-          className="flex items-center justify-center gap-2 w-full rounded-xl bg-amber-400 hover:bg-amber-500 text-stone-900 font-bold py-2.5 text-xs shadow-xs transition active:scale-98"
-        >
-          <Megaphone className="h-4 w-4" />
-          <span>Report an issue</span>
-        </Link>
-
-        {/* User / Sign In */}
-        <div className="flex items-center justify-center pt-0.5">
-          {user ? (
-            <div className="flex items-center justify-between w-full px-2 text-xs">
-              <span className="font-bold text-stone-800 dark:text-stone-200 truncate">
-                {user.name.split(' ')[0]}
-              </span>
-              <button
-                type="button"
-                onClick={logout}
-                className="text-rose-600 hover:underline text-[11px] font-semibold"
-              >
-                Sign out
-              </button>
-            </div>
-          ) : (
-            <Link
-              to="/login"
-              className="text-xs font-bold text-[#800000] dark:text-rose-400 hover:underline"
-            >
-              Sign in
-            </Link>
-          )}
-        </div>
-
-        {/* Language & Theme Controls: Indian Flag + தமிழில் காண்க */}
-        <div className="flex items-center justify-between gap-1.5 pt-1">
-          <button
-            type="button"
-            onClick={() => changeLanguage(language === 'en' ? 'ta' : 'en')}
-            className="flex-1 flex items-center justify-center gap-1.5 rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-1.5 px-2 text-[11px] font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50 transition shadow-2xs font-tamil"
+      <div className="p-3 border-t border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 space-y-2">
+        {/* Report an issue Action Button */}
+        {!collapsed ? (
+          <Link
+            to="/report"
+            onClick={onItemClick}
+            className="flex items-center justify-center gap-2 w-full rounded-xl bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold py-2.5 text-xs shadow-xs transition active:scale-98 min-h-[44px]"
           >
-            <span>🇮🇳</span>
-            <span>{language === 'en' ? 'தமிழில் காண்க' : 'View in English'}</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="flex h-8 w-8 items-center justify-center rounded-lg border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 transition shadow-2xs"
-            title="Display mode"
+            <Megaphone className="h-4 w-4" />
+            <span>Report an issue</span>
+          </Link>
+        ) : (
+          <Link
+            to="/report"
+            onClick={onItemClick}
+            className="flex items-center justify-center rounded-xl bg-amber-400 hover:bg-amber-500 text-stone-950 font-bold p-2.5 min-h-[44px] min-w-[44px]"
+            title="Report an issue"
           >
-            {theme === 'dark' ? (
-              <Sun className="h-3.5 w-3.5 text-amber-400" />
+            <Megaphone className="h-4 w-4" />
+          </Link>
+        )}
+
+        {/* User / Sign In Info */}
+        {!collapsed ? (
+          <div className="flex items-center justify-between px-2 text-xs py-1">
+            {user ? (
+              <>
+                <div className="truncate pr-2">
+                  <span className="font-bold text-stone-900 dark:text-stone-100 block truncate">
+                    {user.name.split(' ')[0]}
+                  </span>
+                  <span className="text-[10px] text-stone-400 capitalize block truncate">
+                    {user.role.replace('_', ' ')}
+                  </span>
+                </div>
+                <button
+                  type="button"
+                  onClick={() => {
+                    logout();
+                    navigate('/');
+                  }}
+                  className="text-rose-600 hover:underline text-xs font-semibold shrink-0"
+                >
+                  Sign out
+                </button>
+              </>
             ) : (
-              <Monitor className="h-3.5 w-3.5 text-stone-600" />
+              <div className="flex items-center justify-between w-full">
+                <Link
+                  to="/login"
+                  onClick={onItemClick}
+                  className="text-xs font-bold text-[#800000] dark:text-rose-400 hover:underline"
+                >
+                  Sign in
+                </Link>
+                <Link
+                  to="/register"
+                  onClick={onItemClick}
+                  className="text-xs text-stone-500 hover:underline"
+                >
+                  Join
+                </Link>
+              </div>
             )}
-          </button>
-        </div>
+          </div>
+        ) : null}
 
-        {/* Feedback & Stats */}
-        <div className="text-center space-y-1 pt-1 text-[10px] text-stone-400 dark:text-stone-500">
-          <button
-            type="button"
-            onClick={() => setFeedbackModalOpen(true)}
-            className="hover:underline text-stone-500 dark:text-stone-400 hover:text-[#800000] dark:hover:text-rose-400 transition"
-          >
-            Share feedback
-          </button>
-          <div className="flex items-center justify-center gap-1.5">
-            <span>👁️ {visitorCount.toLocaleString()} visitors</span>
-            <span>·</span>
+        {/* Language & Theme Controls */}
+        {!collapsed && (
+          <div className="flex items-center justify-between gap-1.5 pt-1">
             <button
               type="button"
-              onClick={() => setOpenDataModalOpen(true)}
-              className="cursor-pointer hover:underline text-stone-500 dark:text-stone-400 hover:text-[#800000] dark:hover:text-rose-400 transition"
+              onClick={() => changeLanguage(language === 'en' ? 'ta' : 'en')}
+              className="flex-1 flex items-center justify-center gap-1.5 rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 py-1.5 px-2 text-xs font-bold text-stone-700 dark:text-stone-300 hover:bg-stone-50 dark:hover:bg-stone-750 transition shadow-2xs font-tamil min-h-[38px]"
             >
-              📂 Open Data
+              <span>🇮🇳</span>
+              <span>{language === 'en' ? 'தமிழில் காண்க' : 'English'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={toggleTheme}
+              className="flex h-9 w-9 items-center justify-center rounded-xl border border-stone-200 dark:border-stone-700 bg-white dark:bg-stone-800 text-stone-600 dark:text-stone-300 hover:bg-stone-50 transition shadow-2xs min-h-[38px] min-w-[38px]"
+              title="Display mode"
+            >
+              {theme === 'dark' ? <Sun className="h-4 w-4 text-amber-400" /> : <Moon className="h-4 w-4 text-stone-700" />}
             </button>
           </div>
-          <div className="flex items-center justify-center gap-1 text-[9px] text-stone-400">
-            <span className="cursor-pointer hover:underline">Privacy</span>
-            <span>·</span>
-            <span className="cursor-pointer hover:underline">Terms</span>
-            <span>·</span>
-            <span className="cursor-pointer hover:underline">Disclaimer</span>
+        )}
+
+        {/* Feedback & Stats */}
+        {!collapsed && (
+          <div className="text-center space-y-1 pt-1 text-[10px] text-stone-400 dark:text-stone-500">
+            <div className="flex items-center justify-center gap-1.5">
+              <span>👁️ {visitorCount.toLocaleString()} visitors</span>
+              <span>·</span>
+              <button
+                type="button"
+                onClick={() => setOpenDataModalOpen(true)}
+                className="cursor-pointer hover:underline text-stone-500 dark:text-stone-400 hover:text-[#800000] dark:hover:text-rose-400 transition"
+              >
+                📂 Open Data
+              </button>
+            </div>
           </div>
-        </div>
+        )}
       </div>
 
-      {/* 1. Explore Module Modal */}
-      {activeModalModule && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-lg rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 sm:p-7 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <div className="flex items-center gap-2.5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-rose-50 text-[#800000] dark:bg-rose-950 dark:text-rose-400 font-bold">
-                  🏛️
-                </div>
-                <div>
-                  <h3 className="text-base font-bold text-stone-900 dark:text-white">
-                    {activeModalModule}
-                  </h3>
-                  <span className="text-[11px] text-stone-400">Tamil Nadu Open Governance Platform</span>
-                </div>
-              </div>
-              <button
-                type="button"
-                onClick={() => setActiveModalModule(null)}
-                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-              >
-                ✕
-              </button>
+      {/* Explore Module Modal */}
+      <Modal
+        isOpen={!!activeModalModule}
+        onClose={() => setActiveModalModule(null)}
+        title={activeModalModule}
+        description="Tamil Nadu Open Governance Platform"
+        footer={
+          <div className="flex justify-end gap-2">
+            <Button variant="ghost" size="sm" onClick={() => setActiveModalModule(null)}>
+              Close
+            </Button>
+            <Button
+              variant="default"
+              size="sm"
+              onClick={() => {
+                setActiveModalModule(null);
+                navigate('/issues');
+              }}
+            >
+              View on Issues Board
+            </Button>
+          </div>
+        }
+      >
+        <div className="space-y-4">
+          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
+            This transparency module tracks departmental budget allocations, ongoing municipal works, and citizen accountability scorecards across 38 districts of Tamil Nadu.
+          </p>
+
+          <div className="rounded-2xl bg-stone-50 dark:bg-stone-800/50 p-4 space-y-2 text-xs">
+            <div className="flex justify-between">
+              <span className="text-stone-500">Coverage:</span>
+              <span className="font-bold text-stone-800 dark:text-stone-200">38 Districts · 234 Constituencies</span>
             </div>
-
-            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-              This module tracks key departmental allocations, ongoing municipal projects, and citizen accountability scorecards across 38 districts of Tamil Nadu.
-            </p>
-
-            <div className="rounded-2xl bg-stone-50 dark:bg-stone-800/50 p-4 space-y-2 text-xs">
-              <div className="flex justify-between">
-                <span className="text-stone-500">Coverage:</span>
-                <span className="font-bold text-stone-800 dark:text-stone-200">38 Districts · 234 Constituencies</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Public Verification Status:</span>
-                <span className="font-bold text-teal-600">Active Civic Consensus</span>
-              </div>
-              <div className="flex justify-between">
-                <span className="text-stone-500">Service SLA standard:</span>
-                <span className="font-bold text-emerald-600">24h - 48h Escalation</span>
-              </div>
+            <div className="flex justify-between">
+              <span className="text-stone-500">Public Verification Status:</span>
+              <Badge variant="success" size="sm">Active Civic Consensus</Badge>
             </div>
-
-            <div className="flex justify-end gap-2 pt-2">
-              <button
-                type="button"
-                onClick={() => setActiveModalModule(null)}
-                className="rounded-xl px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100 dark:text-stone-300 dark:hover:bg-stone-800"
-              >
-                Close
-              </button>
-              <Link
-                to="/issues"
-                onClick={() => setActiveModalModule(null)}
-                className="rounded-xl bg-[#800000] px-4 py-2 text-xs font-bold text-white hover:bg-[#680000]"
-              >
-                View on Issues Board
-              </Link>
+            <div className="flex justify-between">
+              <span className="text-stone-500">Service SLA standard:</span>
+              <span className="font-bold text-emerald-600 dark:text-emerald-400">24h - 48h Escalation</span>
             </div>
           </div>
         </div>
-      )}
+      </Modal>
 
-      {/* 2. Open Data Modal */}
-      {openDataModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xl space-y-5">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">📂</span>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white">
-                  Open Data Repository
-                </h3>
+      {/* Open Data Modal */}
+      <Modal
+        isOpen={openDataModalOpen}
+        onClose={() => setOpenDataModalOpen(false)}
+        title="Open Data Repository"
+        description="Public machine-readable civic metrics & geo-layers"
+        footer={
+          <Button variant="default" size="sm" onClick={() => setOpenDataModalOpen(false)}>
+            Done
+          </Button>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
+            Export live public grievance reports, ward densities, and SLA compliance metrics in JSON open standards:
+          </p>
+
+          <div className="space-y-2 text-xs">
+            <a
+              href="/api/v1/public/issues?limit=100"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/60 hover:border-[#800000] transition"
+            >
+              <div>
+                <span className="font-bold text-stone-900 dark:text-white block">Grievance Feed API (JSON)</span>
+                <span className="text-[11px] text-stone-400">Live anonymized reports with geocodes</span>
               </div>
-              <button
-                type="button"
-                onClick={() => setOpenDataModalOpen(false)}
-                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-              >
-                ✕
-              </button>
-            </div>
+              <span className="text-xs font-bold text-[#800000] dark:text-rose-400">View API ↗</span>
+            </a>
 
-            <p className="text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
-              Export live public records, ward hotspot densities, and SLA compliance datasets in machine-readable open formats.
-            </p>
-
-            <div className="space-y-2 text-xs">
-              <a
-                href="/api/v1/public/issues?limit=100"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/60 hover:border-[#800000] transition"
-              >
-                <div>
-                  <span className="font-bold text-stone-900 dark:text-white block">Grievance Feed API (JSON)</span>
-                  <span className="text-[11px] text-stone-400">Live anonymized reports with geocodes</span>
-                </div>
-                <span className="text-xs font-bold text-[#800000] dark:text-rose-400">View API ↗</span>
-              </a>
-
-              <a
-                href="/api/v1/public/stats"
-                target="_blank"
-                rel="noreferrer"
-                className="flex items-center justify-between p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/60 hover:border-[#800000] transition"
-              >
-                <div>
-                  <span className="font-bold text-stone-900 dark:text-white block">State SLA & KPI Metrics (JSON)</span>
-                  <span className="text-[11px] text-stone-400">Resolution rates, average days, total counts</span>
-                </div>
-                <span className="text-xs font-bold text-[#800000] dark:text-rose-400">View API ↗</span>
-              </a>
-            </div>
-
-            <div className="flex justify-end pt-2">
-              <button
-                type="button"
-                onClick={() => setOpenDataModalOpen(false)}
-                className="rounded-xl bg-[#800000] px-5 py-2 text-xs font-bold text-white hover:bg-[#680000]"
-              >
-                Done
-              </button>
-            </div>
+            <a
+              href="/api/v1/public/stats"
+              target="_blank"
+              rel="noreferrer"
+              className="flex items-center justify-between p-3 rounded-xl border border-stone-200 dark:border-stone-800 bg-stone-50 dark:bg-stone-800/60 hover:border-[#800000] transition"
+            >
+              <div>
+                <span className="font-bold text-stone-900 dark:text-white block">State SLA & KPI Metrics (JSON)</span>
+                <span className="text-[11px] text-stone-400">Resolution rates, average days, total counts</span>
+              </div>
+              <span className="text-xs font-bold text-[#800000] dark:text-rose-400">View API ↗</span>
+            </a>
           </div>
         </div>
-      )}
-
-      {/* 3. Feedback Modal */}
-      {feedbackModalOpen && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-stone-900/60 backdrop-blur-xs animate-in fade-in">
-          <div className="relative w-full max-w-md rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg">💬</span>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white">
-                  Share Your Feedback
-                </h3>
-              </div>
-              <button
-                type="button"
-                onClick={() => { setFeedbackModalOpen(false); setFeedbackSubmitted(false); }}
-                className="p-1 rounded-lg text-stone-400 hover:bg-stone-100 dark:hover:bg-stone-800"
-              >
-                ✕
-              </button>
-            </div>
-
-            {feedbackSubmitted ? (
-              <div className="text-center py-6 space-y-2">
-                <span className="text-3xl">🎉</span>
-                <h4 className="text-sm font-bold text-stone-900 dark:text-white">Nandri! / Thank You!</h4>
-                <p className="text-xs text-stone-500">Your feedback has been received and helps improve NammaTN.</p>
-              </div>
-            ) : (
-              <div className="space-y-3">
-                <p className="text-xs text-stone-500">
-                  How can we make NammaTN more transparent or easier for your neighbourhood?
-                </p>
-                <textarea
-                  rows={4}
-                  value={feedbackText}
-                  onChange={(e) => setFeedbackText(e.target.value)}
-                  placeholder="Tell us what you think or report a website suggestion..."
-                  className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 p-3 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000]"
-                />
-                <div className="flex justify-end gap-2 pt-1">
-                  <button
-                    type="button"
-                    onClick={() => setFeedbackModalOpen(false)}
-                    className="rounded-xl px-4 py-2 text-xs font-semibold text-stone-600 hover:bg-stone-100"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    type="button"
-                    onClick={() => setFeedbackSubmitted(true)}
-                    className="rounded-xl bg-[#800000] px-5 py-2 text-xs font-bold text-white hover:bg-[#680000]"
-                  >
-                    Submit
-                  </button>
-                </div>
-              </div>
-            )}
-          </div>
-        </div>
-      )}
+      </Modal>
     </aside>
   );
 };

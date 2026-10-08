@@ -1,13 +1,16 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
-  Shield, User, MapPin, Camera, ChevronDown, Check,
-  AlertTriangle, ArrowLeft, UploadCloud, X, Loader2
+  Shield, User, MapPin, Camera, Check,
+  AlertTriangle, UploadCloud, X, Loader2
 } from 'lucide-react';
-import { NammaSidebar } from '@/components/layout/NammaSidebar';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { toast } from 'sonner';
+import {
+  PageHeader, Card, CardHeader, CardTitle, CardContent,
+  Button, Input, Select, Badge
+} from '@/components/ui';
 
 interface CategoryOption {
   id: string;
@@ -58,46 +61,31 @@ export const ReportPage: React.FC = () => {
   const [selectedCatId, setSelectedCatId] = useState<string>('roads');
   const [roadType, setRoadType] = useState<string>('National highway');
   const [damageType, setDamageType] = useState<string>('Pothole');
+
   const [title, setTitle] = useState<string>('');
-  const [showMoreDetails, setShowMoreDetails] = useState<boolean>(false);
   const [description, setDescription] = useState<string>('');
   const [severity, setSeverity] = useState<string>('medium');
-  const [constituency, setConstituency] = useState<string>('');
-  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+  const [constituency, setConstituency] = useState<string>('Royapuram');
+
   const [locationStatus, setLocationStatus] = useState<string>('');
+  const [locationCoords, setLocationCoords] = useState<{ lat: number; lng: number } | null>(null);
+
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
+
   const [submitting, setSubmitting] = useState<boolean>(false);
-  const [spotId, setSpotId] = useState<number | null>(null);
-  const [spotName, setSpotName] = useState<string>('');
+  const [showMoreDetails, setShowMoreDetails] = useState<boolean>(false);
+
+  const spotIdParam = searchParams.get('spot_id');
+  const spotName = searchParams.get('spot_name');
+  const spotId = spotIdParam ? parseInt(spotIdParam, 10) : undefined;
 
   useEffect(() => {
-    const cat = searchParams.get('category');
-    if (cat && CATEGORIES.some((c) => c.id === cat)) {
-      setSelectedCatId(cat);
+    if (spotId && spotName) {
+      setTitle(`Maintenance report: ${spotName}`);
+      setDescription(`Civic maintenance report submitted for Adopt-a-Spot #${spotId} (${spotName}). Please inspect ground conditions.`);
     }
-
-    const sid = searchParams.get('spot_id');
-    const sname = searchParams.get('spot_name');
-    const saddr = searchParams.get('address');
-    const slat = searchParams.get('lat');
-    const slng = searchParams.get('lng');
-
-    if (sid) {
-      setSpotId(Number(sid));
-      if (sname) {
-        setSpotName(sname);
-        setTitle(`Issue at ${sname}`);
-      }
-      if (saddr) {
-        setConstituency(saddr.split(',')[0] || 'Chennai');
-        setDescription(`Observed at adopted spot (${sname || 'Spot #' + sid}) located at ${saddr}.`);
-      }
-      if (slat && slng) {
-        setLocationCoords({ lat: parseFloat(slat), lng: parseFloat(slng) });
-        setLocationStatus(`📍 Linked to Adopted Spot (${sname || sid})`);
-      }
-    }
-  }, [searchParams]);
+  }, [spotId, spotName]);
 
   const selectedCat = CATEGORIES.find((c) => c.id === selectedCatId) || CATEGORIES[0];
 
@@ -106,18 +94,17 @@ export const ReportPage: React.FC = () => {
       toast.error('Geolocation is not supported by your browser');
       return;
     }
-    setLocationStatus('Detecting location...');
+    setLocationStatus('Locating your position in Tamil Nadu...');
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLocationCoords({ lat: pos.coords.latitude, lng: pos.coords.longitude });
-        setConstituency('Royapuram'); // Auto-detected constituency sample
-        setLocationStatus('📍 Location detected (13.0827° N, 80.2707° E)');
-        toast.success('Location auto-detected!');
+        setLocationStatus(`📍 Detected location (${pos.coords.latitude.toFixed(4)}, ${pos.coords.longitude.toFixed(4)})`);
+        toast.success('Location detected!');
       },
       () => {
-        setLocationStatus('📍 Location set to Chennai (Demo Default)');
+        setLocationStatus('📍 Defaulting to Royapuram, Chennai (13.0827, 80.2707)');
         setLocationCoords({ lat: 13.0827, lng: 80.2707 });
-        setConstituency('Royapuram');
+        toast.info('Using default Royapuram location');
       }
     );
   };
@@ -125,11 +112,8 @@ export const ReportPage: React.FC = () => {
   const handlePhotoSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       const file = e.target.files[0];
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setPhotoPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
+      setPhotoFile(file);
+      setPhotoPreview(URL.createObjectURL(file));
     }
   };
 
@@ -169,24 +153,19 @@ export const ReportPage: React.FC = () => {
   };
 
   return (
-    <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100 font-sans">
-      {/* Persistent Left Sidebar */}
-      <NammaSidebar className="hidden md:flex" />
+    <div className="max-w-4xl mx-auto space-y-6 font-sans">
+      <PageHeader
+        title="Report an issue"
+        subtitle="Choose what is wrong, add a photo and publish it for community verification."
+        breadcrumbs={[
+          { label: 'Portal', href: '/issues' },
+          { label: 'File Grievance' }
+        ]}
+      />
 
-      {/* Main Form Content */}
-      <main className="flex-1 max-w-4xl mx-auto p-4 sm:p-8 lg:p-10 space-y-6">
-        {/* Title Header */}
-        <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white">
-            Report an issue
-          </h1>
-          <p className="mt-1 text-xs sm:text-sm text-stone-500 dark:text-stone-400">
-            Choose what is wrong, add a photo and publish it for community verification.
-          </p>
-        </div>
-
-        {spotId && (
-          <div className="rounded-2xl border border-emerald-300/80 bg-emerald-50/90 dark:border-emerald-800 dark:bg-emerald-950/40 p-4 text-xs text-emerald-950 dark:text-emerald-100 flex items-center justify-between gap-3 shadow-2xs">
+      {spotId && (
+        <Card className="border-emerald-300 dark:border-emerald-800 bg-emerald-50/90 dark:bg-emerald-950/40 p-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs">
             <div className="flex items-center gap-3">
               <span className="text-xl">📍</span>
               <div>
@@ -200,48 +179,49 @@ export const ReportPage: React.FC = () => {
             </div>
             <Link
               to={`/spots/${spotId}`}
-              className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold text-xs hover:bg-emerald-800 transition shrink-0"
+              className="px-3 py-1.5 rounded-xl bg-emerald-700 text-white font-semibold text-xs hover:bg-emerald-800 transition shrink-0 self-start sm:self-auto min-h-[36px] flex items-center"
             >
               View Spot
             </Link>
           </div>
-        )}
+        </Card>
+      )}
 
-        {/* Notice 1: Independent Civic Platform Disclaimer */}
-        <div className="rounded-2xl border border-amber-200/90 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">
+      {/* Disclaimers & Auth notice */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+        <div className="rounded-2xl border border-amber-200/90 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5 shadow-2xs">
           <Shield className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>NammaTN</strong> is an independent civic platform, not a government grievance portal. Reports are classified for public tracking and are not sent to or acknowledged by any department, Minister, MLA or their offices.
+            <strong>NammaTN</strong> is an independent civic platform. Reports are classified for public community tracking.
           </p>
         </div>
 
-        {/* Notice 2: Anonymous Report Status */}
-        <div className="rounded-2xl border border-orange-200/90 bg-orange-50/70 dark:border-orange-900/60 dark:bg-orange-950/30 p-4 text-xs text-orange-950 dark:text-orange-200 flex items-start gap-3">
+        <div className="rounded-2xl border border-orange-200/90 bg-orange-50/70 dark:border-orange-900/60 dark:bg-orange-950/30 p-3.5 text-xs text-orange-950 dark:text-orange-200 flex items-start gap-2.5 shadow-2xs">
           <User className="h-4 w-4 shrink-0 text-orange-600 mt-0.5" />
-          <div className="leading-relaxed">
-            <p className="font-bold">
-              {user ? `Signed in as ${user.name}` : "You're not signed in — your report will be anonymous."}
-            </p>
-            {!user && (
-              <p className="text-stone-600 dark:text-stone-300 mt-0.5">
-                Anonymous reports count but can&apos;t be followed up.{' '}
+          <p className="leading-relaxed">
+            {user ? (
+              <>Signed in as <strong>{user.name}</strong></>
+            ) : (
+              <>
+                Anonymous report.{' '}
                 <Link to="/login" className="font-bold text-[#800000] dark:text-rose-400 hover:underline">
-                  Sign in to track your report.
+                  Sign in to track.
                 </Link>
-              </p>
+              </>
             )}
-          </div>
+          </p>
         </div>
+      </div>
 
-        {/* =========================================================================
-            SECTION 1: 20 Categories Selector (Image 1)
-        ========================================================================= */}
-        <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 sm:p-7 shadow-2xs space-y-4">
-          <label className="block text-xs font-bold text-stone-700 dark:text-stone-300">
+      {/* Category Picker Card */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-sm sm:text-base">
             What&apos;s the problem? <span className="text-rose-600">*</span>
-          </label>
-
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2.5">
             {CATEGORIES.map((cat) => {
               const isSelected = selectedCatId === cat.id;
 
@@ -250,18 +230,16 @@ export const ReportPage: React.FC = () => {
                   key={cat.id}
                   type="button"
                   onClick={() => setSelectedCatId(cat.id)}
-                  className={`flex flex-col items-center justify-center p-4 rounded-2xl border text-center transition-all ${
+                  className={`flex flex-col items-start p-3 sm:p-3.5 rounded-2xl border text-left transition-all min-h-[72px] ${
                     isSelected
-                      ? 'border-[#800000] bg-rose-50/70 dark:border-rose-400 dark:bg-rose-950/40 shadow-xs ring-1 ring-[#800000]'
-                      : 'border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 hover:border-stone-300 dark:hover:border-stone-700 hover:bg-stone-50/60'
+                      ? 'border-[#800000] bg-rose-50/80 dark:border-rose-600 dark:bg-rose-950/50 shadow-2xs ring-2 ring-[#800000]/10'
+                      : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-800/40 hover:bg-stone-100 dark:hover:bg-stone-800'
                   }`}
                 >
-                  <span className="text-2xl mb-1.5">{cat.icon}</span>
+                  <span className="text-xl mb-1.5">{cat.icon}</span>
                   <span
-                    className={`text-xs font-semibold leading-tight ${
-                      isSelected
-                        ? 'text-[#800000] dark:text-rose-300 font-bold'
-                        : 'text-stone-700 dark:text-stone-300'
+                    className={`text-xs font-bold leading-snug line-clamp-2 ${
+                      isSelected ? 'text-[#800000] dark:text-rose-300' : 'text-stone-800 dark:text-stone-200'
                     }`}
                   >
                     {cat.name}
@@ -270,259 +248,178 @@ export const ReportPage: React.FC = () => {
               );
             })}
           </div>
-        </div>
+        </CardContent>
+      </Card>
 
-        {/* =========================================================================
-            SECTION 2: Detailed Form For Selected Category (Image 2)
-        ========================================================================= */}
-        <form onSubmit={handleSubmit} className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 sm:p-8 shadow-2xs space-y-6">
-          {/* Classification Header Banner */}
-          <div className="flex items-center justify-between border-b border-stone-100 dark:border-stone-800 pb-4 text-xs">
-            <span className="text-stone-500">
-              Public classification:{' '}
-              <strong className="text-stone-900 dark:text-white font-bold">
-                {selectedCat.deptName}
-              </strong>
-            </span>
-            <button
-              type="button"
-              onClick={() => window.scrollTo({ top: 300, behavior: 'smooth' })}
-              className="text-[#800000] dark:text-rose-400 font-bold hover:underline"
-            >
-              Change
-            </button>
-          </div>
-
-          {/* Dynamic Category Specific Inputs */}
-          {selectedCatId === 'roads' && (
-            <div className="space-y-4">
-              {/* Type of road dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Type of road <span className="text-stone-400 font-normal">optional</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={roadType}
-                    onChange={(e) => setRoadType(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-3.5 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000] appearance-none"
-                  >
-                    <option value="National highway">National highway</option>
-                    <option value="State highway">State highway</option>
-                    <option value="Corporation road">Corporation road</option>
-                    <option value="Panchayat road">Panchayat road</option>
-                    <option value="Other">Other</option>
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
-                </div>
-                <p className="mt-1 text-[11px] text-stone-400 leading-normal">
-                  Helps classify the report for public reference — highways are associated with the Highways department; town streets with the municipality. NammaTN does not send it to either office.
-                </p>
-              </div>
-
-              {/* Type of damage dropdown */}
-              <div>
-                <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                  Type of damage <span className="text-stone-400 font-normal">optional</span>
-                </label>
-                <div className="relative">
-                  <select
-                    value={damageType}
-                    onChange={(e) => setDamageType(e.target.value)}
-                    className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-3.5 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000] appearance-none"
-                  >
-                    <option value="Pothole">Pothole</option>
-                    <option value="Waterlogging / flooding">Waterlogging / flooding</option>
-                    <option value="Cave-in">Cave-in</option>
-                    <option value="Broken divider">Broken divider</option>
-                    <option value="Unfinished road work">Unfinished road work</option>
-                  </select>
-                  <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
-                </div>
-              </div>
-            </div>
-          )}
-
-          {/* Title Input */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Title <span className="text-stone-400 font-normal">optional — we&apos;ll add one if you skip it</span>
-            </label>
-            <input
-              type="text"
+      {/* Form Details Card */}
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-sm sm:text-base">Grievance Details</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <Input
+              label="Headline / Brief Summary"
+              required
               value={title}
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Large pothole on Anna Salai near bus stop"
-              className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-3.5 py-2.5 text-xs text-stone-900 dark:text-white placeholder:text-stone-400 focus:outline-none focus:ring-2 focus:ring-[#800000]"
             />
-          </div>
 
-          {/* Collapsible toggle: Add more details */}
-          <div>
-            <button
-              type="button"
-              onClick={() => setShowMoreDetails(!showMoreDetails)}
-              className="text-xs font-bold text-[#800000] dark:text-rose-400 hover:underline flex items-center gap-1"
-            >
-              <span>• Add more details — description, area, severity</span>
-            </button>
+            <div>
+              <button
+                type="button"
+                onClick={() => setShowMoreDetails(!showMoreDetails)}
+                className="text-xs font-bold text-[#800000] dark:text-rose-400 hover:underline flex items-center gap-1 min-h-[36px]"
+              >
+                <span>• {showMoreDetails ? 'Hide extra details' : 'Add more details — description, severity'}</span>
+              </button>
 
-            {showMoreDetails && (
-              <div className="mt-3 space-y-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 animate-in fade-in">
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Description
-                  </label>
-                  <textarea
-                    rows={3}
-                    value={description}
-                    onChange={(e) => setDescription(e.target.value)}
-                    placeholder="Describe specific details, landmarks, or danger to vehicles/pedestrians..."
-                    className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 p-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000]"
-                  />
-                </div>
+              {showMoreDetails && (
+                <div className="mt-3 space-y-3 p-4 rounded-2xl bg-stone-50 dark:bg-stone-800/60 border border-stone-200 dark:border-stone-700 animate-in fade-in">
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
+                      Full Description
+                    </label>
+                    <textarea
+                      rows={3}
+                      value={description}
+                      onChange={(e) => setDescription(e.target.value)}
+                      placeholder="Describe specific landmarks, hazards to motorists, or local ward context..."
+                      className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-white dark:bg-stone-900 p-3 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000]/20"
+                    />
+                  </div>
 
-                <div>
-                  <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-                    Severity Level
-                  </label>
-                  <div className="flex gap-2">
-                    {['low', 'medium', 'high', 'critical'].map((lvl) => (
-                      <button
-                        key={lvl}
-                        type="button"
-                        onClick={() => setSeverity(lvl)}
-                        className={`px-3 py-1 rounded-lg text-xs capitalize font-semibold transition ${
-                          severity === lvl
-                            ? 'bg-[#800000] text-white'
-                            : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600'
-                        }`}
-                      >
-                        {lvl}
-                      </button>
-                    ))}
+                  <div>
+                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                      Severity Level
+                    </label>
+                    <div className="flex gap-2 flex-wrap">
+                      {['low', 'medium', 'high', 'critical'].map((lvl) => (
+                        <button
+                          key={lvl}
+                          type="button"
+                          onClick={() => setSeverity(lvl)}
+                          className={`px-3 py-1.5 rounded-xl text-xs capitalize font-semibold transition min-h-[36px] ${
+                            severity === lvl
+                              ? 'bg-[#800000] dark:bg-rose-600 text-white'
+                              : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300'
+                          }`}
+                        >
+                          {lvl}
+                        </button>
+                      ))}
+                    </div>
                   </div>
                 </div>
-              </div>
-            )}
-          </div>
-
-          {/* Location Selector */}
-          <div className="space-y-2">
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
-              Where is it? <span className="text-rose-600">*</span>
-            </label>
-            <p className="text-[11px] text-stone-400">
-              Share your location to auto-detect your district & constituency, or pick your constituency below.
-            </p>
-
-            <div className="flex flex-wrap gap-2.5 pt-1">
-              <button
-                type="button"
-                onClick={handleUseCurrentLocation}
-                className="flex items-center gap-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-4 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 transition shadow-2xs"
-              >
-                <MapPin className="h-4 w-4 text-rose-600" />
-                <span>Use my current location</span>
-              </button>
-
-              <button
-                type="button"
-                onClick={() => {
-                  setLocationCoords({ lat: 13.0827, lng: 80.2707 });
-                  setLocationStatus('📍 Pinned on map: Royapuram (13.0827, 80.2707)');
-                  toast.info('Pin placed on map');
-                }}
-                className="flex items-center gap-1.5 rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-4 py-2.5 text-xs font-semibold text-stone-800 dark:text-stone-200 hover:bg-stone-100 transition shadow-2xs"
-              >
-                <span className="text-rose-600">📍</span>
-                <span>Pick / adjust on map</span>
-              </button>
+              )}
             </div>
 
-            {locationStatus && (
-              <p className="text-xs font-medium text-emerald-600 dark:text-emerald-400">
-                {locationStatus}
-              </p>
-            )}
-          </div>
-
-          {/* Assembly constituency dropdown */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Assembly constituency <span className="text-rose-600">*</span>
-            </label>
-            <div className="relative">
-              <select
-                value={constituency}
-                onChange={(e) => setConstituency(e.target.value)}
-                required
-                className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800/80 px-3.5 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000] appearance-none"
-              >
-                <option value="">— Select your constituency —</option>
-                {CONSTITUENCIES.map((c) => (
-                  <option key={c} value={c}>
-                    {c}
-                  </option>
-                ))}
-              </select>
-              <ChevronDown className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-stone-400 pointer-events-none" />
-            </div>
-          </div>
-
-          {/* Photo Dropzone */}
-          <div>
-            <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1">
-              Photo <span className="text-stone-400 font-normal">optional · JPEG / PNG / WebP / GIF · max 10 MB</span>
-            </label>
-
-            {photoPreview ? (
-              <div className="relative w-40 h-28 rounded-2xl overflow-hidden border border-stone-200">
-                <img src={photoPreview} alt="Evidence preview" className="w-full h-full object-cover" />
-                <button
-                  type="button"
-                  onClick={() => setPhotoPreview(null)}
-                  className="absolute top-1 right-1 p-1 rounded-full bg-stone-900/70 text-white hover:bg-stone-900"
-                >
-                  <X className="h-3.5 w-3.5" />
-                </button>
-              </div>
-            ) : (
-              <label className="flex items-center justify-center gap-2 rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-800 p-6 cursor-pointer hover:bg-stone-50/60 dark:hover:bg-stone-800/40 transition">
-                <Camera className="h-4 w-4 text-stone-400" />
-                <span className="text-xs font-semibold text-stone-600 dark:text-stone-300">
-                  Choose a photo
-                </span>
-                <input
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoSelect}
-                  className="hidden"
-                />
+            {/* Location */}
+            <div className="space-y-2 pt-2">
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                Location & Constituency <span className="text-rose-600">*</span>
               </label>
-            )}
-          </div>
 
-          {/* Bottom Action Bar */}
-          <div className="flex items-center justify-between pt-4 border-t border-stone-100 dark:border-stone-800">
-            <Link
-              to="/issues"
-              className="text-xs font-semibold text-[#800000] dark:text-rose-400 hover:underline"
-            >
-              View all issues
-            </Link>
+              <div className="flex flex-wrap gap-2.5">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<MapPin className="h-4 w-4 text-rose-600" />}
+                  onClick={handleUseCurrentLocation}
+                >
+                  Use my current location
+                </Button>
 
-            <button
-              type="submit"
-              disabled={submitting}
-              className="rounded-xl bg-[#800000] hover:bg-[#680000] px-6 py-2.5 text-xs font-bold text-white shadow-xs transition hover:scale-102 active:scale-98 disabled:opacity-50 flex items-center gap-2"
-            >
-              {submitting && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <span>{user ? 'Submit report' : 'Submit anonymously'}</span>
-            </button>
-          </div>
-        </form>
-      </main>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  leftIcon={<span>📍</span>}
+                  onClick={() => {
+                    setLocationCoords({ lat: 13.0827, lng: 80.2707 });
+                    setLocationStatus('📍 Pinned on map: Royapuram (13.0827, 80.2707)');
+                    toast.info('Pin placed on map');
+                  }}
+                >
+                  Pick on map
+                </Button>
+              </div>
+
+              {locationStatus && (
+                <p className="text-xs font-semibold text-emerald-600 dark:text-emerald-400">
+                  {locationStatus}
+                </p>
+              )}
+            </div>
+
+            <Select
+              label="Assembly constituency"
+              required
+              value={constituency}
+              onChange={(e) => setConstituency(e.target.value)}
+              options={CONSTITUENCIES.map((c) => ({ value: c, label: c }))}
+            />
+
+            {/* Photo upload */}
+            <div className="pt-2">
+              <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
+                Photo Evidence <span className="text-stone-400 font-normal">(optional · JPEG/PNG/WebP max 10MB)</span>
+              </label>
+
+              {photoPreview ? (
+                <div className="relative w-44 h-32 rounded-2xl overflow-hidden border border-stone-200 dark:border-stone-700">
+                  <img src={photoPreview} alt="Evidence preview" className="w-full h-full object-cover" />
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setPhotoPreview(null);
+                      setPhotoFile(null);
+                    }}
+                    className="absolute top-1.5 right-1.5 p-1 rounded-full bg-stone-900/80 text-white hover:bg-stone-900 min-h-[32px] min-w-[32px] flex items-center justify-center"
+                    aria-label="Remove photo"
+                  >
+                    <X className="h-4 w-4" />
+                  </button>
+                </div>
+              ) : (
+                <label className="flex items-center justify-center gap-2.5 rounded-2xl border-2 border-dashed border-stone-200 dark:border-stone-800 p-6 cursor-pointer hover:bg-stone-50/60 dark:hover:bg-stone-800/40 transition min-h-[100px]">
+                  <Camera className="h-5 w-5 text-stone-400" />
+                  <span className="text-xs font-semibold text-stone-700 dark:text-stone-300">
+                    Choose a photo or drag image here
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoSelect}
+                    className="hidden"
+                  />
+                </label>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Action bar */}
+        <div className="flex items-center justify-between pt-2">
+          <Link
+            to="/issues"
+            className="text-xs font-semibold text-[#800000] dark:text-rose-400 hover:underline min-h-[44px] flex items-center"
+          >
+            ← View all issues
+          </Link>
+
+          <Button
+            type="submit"
+            size="md"
+            isLoading={submitting}
+            className="min-h-[44px] px-6"
+          >
+            {user ? 'Submit report' : 'Submit anonymously'}
+          </Button>
+        </div>
+      </form>
     </div>
   );
 };

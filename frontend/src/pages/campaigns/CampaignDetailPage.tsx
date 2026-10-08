@@ -13,6 +13,19 @@ import {
   CampaignDetail, CampaignTaskItem, CampaignLeaderboardEntry
 } from '@/lib/types';
 import { toast } from 'sonner';
+import {
+  Breadcrumbs,
+  Badge,
+  Button,
+  Card,
+  EmptyState,
+  Table,
+  TableHeader,
+  TableHead,
+  TableRow,
+  TableCell,
+  TableBody
+} from '@/components/ui';
 
 const THEME_ICONS: Record<string, { icon: any; color: string; bg: string; border: string }> = {
   monsoon: { icon: CloudRain, color: 'text-blue-600 dark:text-blue-400', bg: 'bg-blue-50 dark:bg-blue-950/40', border: 'border-blue-200 dark:border-blue-800' },
@@ -117,18 +130,17 @@ export const CampaignDetailPage: React.FC = () => {
   if (!campaign) {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center space-y-4">
-        <Flame className="w-12 h-12 text-stone-300 dark:text-stone-700 mx-auto" />
-        <h2 className="text-xl font-bold font-serif text-stone-900 dark:text-stone-100">
-          Campaign Not Found
-        </h2>
-        <p className="text-sm text-stone-500">The requested seasonal campaign could not be located.</p>
-        <Link
-          to="/campaigns"
-          className="inline-flex items-center gap-2 px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to Campaigns
-        </Link>
+        <EmptyState
+          title="Campaign Not Found"
+          description="The requested seasonal campaign could not be located."
+          icon={<Flame className="w-12 h-12 text-stone-400" />}
+          action={
+            <Button variant="primary" onClick={() => navigate('/campaigns')}>
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Campaigns
+            </Button>
+          }
+        />
       </div>
     );
   }
@@ -143,16 +155,14 @@ export const CampaignDetailPage: React.FC = () => {
 
   return (
     <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8 py-8 space-y-8 animate-in fade-in duration-300">
-      {/* Back button */}
-      <div>
-        <Link
-          to="/campaigns"
-          className="inline-flex items-center gap-2 text-xs font-medium text-stone-600 dark:text-stone-400 hover:text-stone-900 dark:hover:text-stone-100 transition"
-        >
-          <ArrowLeft className="w-4 h-4" />
-          Back to All Campaigns
-        </Link>
-      </div>
+      {/* Breadcrumbs */}
+      <Breadcrumbs
+        items={[
+          { label: 'Home', href: '/' },
+          { label: 'Campaigns', href: '/campaigns' },
+          { label: campaign.title }
+        ]}
+      />
 
       {/* Hero Banner Card */}
       <div className="relative rounded-3xl overflow-hidden bg-stone-900 text-white shadow-lg border border-stone-800">
@@ -169,15 +179,14 @@ export const CampaignDetailPage: React.FC = () => {
         <div className="relative p-6 sm:p-10 space-y-6">
           {/* Top metadata tags */}
           <div className="flex flex-wrap items-center gap-2.5">
-            <span className={`inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md bg-white/10 text-white border border-white/20`}>
-              <ThemeIcon className="w-3.5 h-3.5 text-gold" />
+            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold backdrop-blur-md bg-white/10 text-white border border-white/20">
+              <ThemeIcon className="w-3.5 h-3.5 text-amber-300" />
               {campaign.season_theme.charAt(0).toUpperCase() + campaign.season_theme.slice(1).replace('_', ' ')}
             </span>
 
-            <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full text-xs font-semibold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
-              <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse"></span>
+            <Badge variant="success" size="sm" dot>
               {campaign.status.toUpperCase()}
-            </span>
+            </Badge>
 
             <span className="inline-flex items-center gap-1 px-3 py-1 rounded-full text-xs font-medium bg-stone-800/80 text-stone-300 border border-stone-700">
               <MapPin className="w-3 h-3 text-stone-400" />
@@ -192,7 +201,7 @@ export const CampaignDetailPage: React.FC = () => {
 
           {/* Title & Description */}
           <div className="space-y-3 max-w-3xl">
-            <h1 className="text-3xl sm:text-4xl font-serif font-bold text-white tracking-tight">
+            <h1 className="text-3xl sm:text-4xl font-extrabold text-white tracking-tight">
               {campaign.title}
             </h1>
             <p className="text-sm sm:text-base text-stone-300 leading-relaxed font-normal">
@@ -205,15 +214,15 @@ export const CampaignDetailPage: React.FC = () => {
             <div className="flex flex-wrap items-center gap-4 sm:gap-8">
               <div>
                 <span className="text-xs text-stone-400 block">Participants</span>
-                <span className="text-xl font-bold font-serif text-white flex items-center gap-1.5 mt-0.5">
-                  <Users className="w-4 h-4 text-primary" />
+                <span className="text-xl font-bold text-white flex items-center gap-1.5 mt-0.5">
+                  <Users className="w-4 h-4 text-rose-400" />
                   {campaign.participants_count}
                 </span>
               </div>
 
               <div>
                 <span className="text-xs text-stone-400 block">Completion Bonus</span>
-                <span className="text-xl font-bold font-serif text-gold flex items-center gap-1.5 mt-0.5">
+                <span className="text-xl font-bold text-amber-300 flex items-center gap-1.5 mt-0.5">
                   <Award className="w-4 h-4" />
                   +{campaign.points_reward} pts
                 </span>
@@ -222,8 +231,8 @@ export const CampaignDetailPage: React.FC = () => {
               {campaign.badge_name && (
                 <div>
                   <span className="text-xs text-stone-400 block">Special Badge</span>
-                  <span className="text-xl font-bold font-serif text-amber-300 flex items-center gap-1.5 mt-0.5">
-                    <Trophy className="w-4 h-4 text-gold" />
+                  <span className="text-xl font-bold text-amber-300 flex items-center gap-1.5 mt-0.5">
+                    <Trophy className="w-4 h-4 text-amber-400" />
                     {campaign.badge_name}
                   </span>
                 </div>
@@ -234,36 +243,36 @@ export const CampaignDetailPage: React.FC = () => {
             <div className="flex items-center gap-3">
               {campaign.is_joined ? (
                 <div className="flex items-center gap-3">
-                  <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-emerald-500/20 text-emerald-300 border border-emerald-500/30 text-xs font-semibold">
-                    <Check className="w-4 h-4 text-emerald-400" />
+                  <Badge variant="success" size="md">
+                    <Check className="w-4 h-4 mr-1 text-emerald-400" />
                     Enrolled ({campaign.user_points_earned} pts earned)
-                  </span>
-                  <button
+                  </Badge>
+                  <Button
+                    variant="outline"
+                    size="sm"
                     onClick={handleLeave}
-                    disabled={actionLoading}
-                    className="inline-flex items-center gap-1 px-3 py-1.5 rounded-xl border border-stone-700 hover:border-red-500/50 hover:bg-red-950/30 text-stone-400 hover:text-red-400 text-xs font-medium transition"
+                    loading={actionLoading}
+                    className="border-stone-700 hover:border-rose-500/50 hover:bg-rose-950/30 text-stone-400 hover:text-rose-400 min-h-[44px]"
                   >
-                    <LogOut className="w-3.5 h-3.5" />
+                    <LogOut className="w-3.5 h-3.5 mr-1" />
                     Leave
-                  </button>
+                  </Button>
                 </div>
               ) : campaign.status === 'completed' ? (
-                <span className="px-4 py-2 rounded-xl bg-stone-800 text-stone-400 text-xs font-medium">
+                <Badge variant="neutral" size="md">
                   Campaign Concluded
-                </span>
+                </Badge>
               ) : (
-                <button
+                <Button
+                  variant="primary"
+                  size="md"
                   onClick={handleJoin}
-                  disabled={actionLoading}
-                  className="inline-flex items-center gap-2 px-6 py-2.5 rounded-xl bg-primary hover:bg-primary/90 text-white font-semibold text-xs shadow-md transition"
+                  loading={actionLoading}
+                  className="min-h-[44px]"
                 >
-                  {actionLoading ? (
-                    <RefreshCw className="w-4 h-4 animate-spin" />
-                  ) : (
-                    <Flame className="w-4 h-4" />
-                  )}
+                  <Flame className="w-4 h-4 mr-2" />
                   Join Mission (+25 pts instant)
-                </button>
+                </Button>
               )}
             </div>
           </div>
@@ -274,17 +283,17 @@ export const CampaignDetailPage: React.FC = () => {
       <div className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-4">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div>
-            <span className="text-xs font-medium text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
+            <span className="text-xs font-semibold text-stone-500 uppercase tracking-wider flex items-center gap-1.5">
               <Target className="w-4 h-4 text-primary" />
               Collective Civic Target (Tamil Nadu / GCC)
             </span>
-            <h3 className="text-lg font-serif font-bold text-stone-900 dark:text-stone-100 mt-1">
+            <h3 className="text-lg font-bold text-stone-900 dark:text-stone-100 mt-1">
               {campaign.current_value} of {campaign.target_value}{' '}
               {campaign.target_metric.replace('_', ' ')} achieved
             </h3>
           </div>
           <div className="text-right">
-            <span className="text-2xl font-bold font-serif text-primary">
+            <span className="text-2xl font-bold text-primary">
               {campaign.progress_percent}%
             </span>
             <span className="text-xs text-stone-500 block">overall progress</span>
@@ -314,7 +323,7 @@ export const CampaignDetailPage: React.FC = () => {
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
             <CheckCircle2 className="w-5 h-5 text-primary" />
-            <h2 className="text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
+            <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">
               Mission Tasks Checklist
             </h2>
           </div>
@@ -356,13 +365,15 @@ export const CampaignDetailPage: React.FC = () => {
                 </p>
               </div>
             </div>
-            <button
+            <Button
+              variant="primary"
+              size="sm"
               onClick={handleJoin}
-              disabled={actionLoading}
-              className="px-4 py-2 rounded-xl bg-primary text-white text-xs font-semibold whitespace-nowrap shadow-xs hover:bg-primary/90 transition"
+              loading={actionLoading}
+              className="min-h-[44px]"
             >
               Join Campaign Now
-            </button>
+            </Button>
           </div>
         )}
 
@@ -435,7 +446,7 @@ export const CampaignDetailPage: React.FC = () => {
                     </span>
                     <Link
                       to={action.url}
-                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition"
+                      className="inline-flex items-center gap-1.5 text-xs font-semibold text-primary hover:text-primary/80 transition min-h-[44px]"
                     >
                       <ActionIcon className="w-3.5 h-3.5" />
                       {action.label}
@@ -453,11 +464,11 @@ export const CampaignDetailPage: React.FC = () => {
       <div className="p-6 rounded-3xl bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-800 shadow-xs space-y-6">
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
           <div className="flex items-center gap-2.5">
-            <div className="p-2 rounded-xl bg-gold/10 text-gold border border-gold/20">
-              <Trophy className="w-5 h-5 text-gold" />
+            <div className="p-2 rounded-xl bg-amber-500/10 text-amber-600 dark:text-amber-400 border border-amber-500/20">
+              <Trophy className="w-5 h-5 text-amber-500" />
             </div>
             <div>
-              <h2 className="text-xl font-serif font-bold text-stone-900 dark:text-stone-100">
+              <h2 className="text-xl font-bold text-stone-900 dark:text-stone-100">
                 Campaign Leaderboard
               </h2>
               <p className="text-xs text-stone-500 mt-0.5">
@@ -471,23 +482,25 @@ export const CampaignDetailPage: React.FC = () => {
         </div>
 
         {leaderboard.length === 0 ? (
-          <div className="py-12 text-center text-stone-500 text-xs">
-            No participants on the leaderboard yet. Be the first to join and complete tasks!
-          </div>
+          <EmptyState
+            title="No participants yet"
+            description="Be the first to join and complete tasks to lead the seasonal leaderboard!"
+            icon={<Trophy className="w-8 h-8 text-stone-400" />}
+          />
         ) : (
           <div className="overflow-x-auto">
-            <table className="w-full text-left text-xs">
-              <thead>
-                <tr className="border-b border-stone-200 dark:border-stone-800 text-stone-400 uppercase tracking-wider text-[11px]">
-                  <th className="py-3 px-3 font-semibold">Rank</th>
-                  <th className="py-3 px-4 font-semibold">Citizen Contributor</th>
-                  <th className="py-3 px-4 font-semibold">Tasks Completed</th>
-                  <th className="py-3 px-4 font-semibold">Campaign Points</th>
-                  <th className="py-3 px-4 font-semibold">Status</th>
-                  <th className="py-3 px-3 font-semibold">Joined On</th>
-                </tr>
-              </thead>
-              <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>Rank</TableHead>
+                  <TableHead>Citizen Contributor</TableHead>
+                  <TableHead>Tasks Completed</TableHead>
+                  <TableHead>Campaign Points</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Joined On</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
                 {leaderboard.map(entry => {
                   const isCurrent = user?.id === entry.user_id;
 
@@ -518,14 +531,12 @@ export const CampaignDetailPage: React.FC = () => {
                   }
 
                   return (
-                    <tr
+                    <TableRow
                       key={entry.user_id}
-                      className={`hover:bg-stone-50 dark:hover:bg-stone-800/50 transition ${
-                        isCurrent ? 'bg-primary/5 dark:bg-primary/10 font-medium' : ''
-                      }`}
+                      className={isCurrent ? 'bg-primary/5 dark:bg-primary/10 font-medium' : ''}
                     >
-                      <td className="py-3.5 px-3">{rankBadge}</td>
-                      <td className="py-3.5 px-4">
+                      <TableCell>{rankBadge}</TableCell>
+                      <TableCell>
                         <div className="flex items-center gap-2">
                           <span className="font-semibold text-stone-900 dark:text-stone-100">
                             {entry.display_name}
@@ -534,40 +545,40 @@ export const CampaignDetailPage: React.FC = () => {
                             ({entry.public_id})
                           </span>
                           {isCurrent && (
-                            <span className="px-1.5 py-0.5 rounded text-[10px] bg-primary text-white font-semibold">
+                            <Badge variant="primary" size="sm">
                               You
-                            </span>
+                            </Badge>
                           )}
                         </div>
-                      </td>
-                      <td className="py-3.5 px-4 font-medium text-stone-700 dark:text-stone-300">
+                      </TableCell>
+                      <TableCell className="font-medium text-stone-700 dark:text-stone-300">
                         {entry.tasks_completed_count} tasks
-                      </td>
-                      <td className="py-3.5 px-4">
+                      </TableCell>
+                      <TableCell>
                         <span className="font-bold text-amber-600 dark:text-amber-400">
                           +{entry.points_earned} pts
                         </span>
-                      </td>
-                      <td className="py-3.5 px-4">
+                      </TableCell>
+                      <TableCell>
                         {entry.is_completed ? (
-                          <span className="inline-flex items-center gap-1 text-emerald-600 dark:text-emerald-400 font-semibold text-[11px]">
-                            <CheckCircle2 className="w-3.5 h-3.5" />
+                          <Badge variant="success" size="sm">
+                            <CheckCircle2 className="w-3 h-3 mr-1" />
                             Finished
-                          </span>
+                          </Badge>
                         ) : (
-                          <span className="text-stone-400 text-[11px]">
+                          <span className="text-stone-400 text-xs">
                             In Progress
                           </span>
                         )}
-                      </td>
-                      <td className="py-3.5 px-3 text-stone-400">
+                      </TableCell>
+                      <TableCell className="text-stone-400">
                         {new Date(entry.joined_at).toLocaleDateString('en-IN', { month: 'short', day: 'numeric' })}
-                      </td>
-                    </tr>
+                      </TableCell>
+                    </TableRow>
                   );
                 })}
-              </tbody>
-            </table>
+              </TableBody>
+            </Table>
           </div>
         )}
       </div>

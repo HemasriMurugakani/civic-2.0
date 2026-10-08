@@ -13,10 +13,24 @@ import {
   KPIData, DepartmentLeaderboard, Department, Ward,
   Category, WardHotspot
 } from '@/lib/types';
-import { PageHeader } from '@/components/common/CommonUi';
-import { StatCard } from '@/components/common/StatCard';
+import {
+  PageHeader,
+  StatCard,
+  ChartCard,
+  Card,
+  Badge,
+  Button,
+  Input,
+  Modal,
+  TableContainer,
+  TableHeader,
+  TableBody,
+  TableRow,
+  TableHead,
+  TableCell,
+  Skeleton
+} from '@/components/ui';
 import { DataTable } from '@/components/common/DataTable';
-import { ConfirmDialog } from '@/components/common/ConfirmDialog';
 
 export const GovernmentAdminPage: React.FC = () => {
   const { t } = useTranslation();
@@ -82,44 +96,54 @@ export const GovernmentAdminPage: React.FC = () => {
   };
 
   return (
-    <div className="space-y-8">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-        <PageHeader
-          title="State Governance Overview & Administration"
-          subtitle="Cross-department accountability metrics, resolution verification rates, and administrative data management"
-        />
-
-        {/* Tab Switcher */}
-        <div className="flex rounded-xl bg-stone-100 dark:bg-stone-800 p-1">
-          <button
-            type="button"
-            onClick={() => setActiveTab('overview')}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition ${
-              activeTab === 'overview'
-                ? 'bg-white dark:bg-stone-900 text-[#800000] dark:text-rose-400 shadow-2xs'
-                : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'
-            }`}
-          >
-            Governance Overview
-          </button>
-          <button
-            type="button"
-            onClick={() => setActiveTab('crud')}
-            className={`rounded-lg px-4 py-2 text-xs font-bold transition ${
-              activeTab === 'crud'
-                ? 'bg-white dark:bg-stone-900 text-[#800000] dark:text-rose-400 shadow-2xs'
-                : 'text-stone-500 hover:text-stone-900 dark:hover:text-white'
-            }`}
-          >
-            Master Data CRUD
-          </button>
-        </div>
-      </div>
+    <div className="space-y-6 pb-12">
+      <PageHeader
+        title="State Governance Overview & Administration"
+        subtitle="Cross-department accountability metrics, resolution verification rates, and administrative data management."
+        badge={
+          <Badge variant="primary">
+            State Administration
+          </Badge>
+        }
+        actions={
+          <div className="flex rounded-xl bg-surface-muted p-1 border border-border">
+            <button
+              type="button"
+              onClick={() => setActiveTab('overview')}
+              className={`rounded-lg px-4 py-2 text-xs font-bold transition min-h-[36px] ${
+                activeTab === 'overview'
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-foreground-muted hover:text-foreground'
+              }`}
+            >
+              Governance Overview
+            </button>
+            <button
+              type="button"
+              onClick={() => setActiveTab('crud')}
+              className={`rounded-lg px-4 py-2 text-xs font-bold transition min-h-[36px] ${
+                activeTab === 'crud'
+                  ? 'bg-surface text-primary shadow-xs'
+                  : 'text-foreground-muted hover:text-foreground'
+              }`}
+            >
+              Master Data CRUD
+            </button>
+          </div>
+        }
+      />
 
       {activeTab === 'overview' ? (
-        <div className="space-y-8">
+        <div className="space-y-6">
           {/* Top KPI Cards */}
-          {kpi && (
+          {loading ? (
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+              <Skeleton className="h-28 rounded-2xl" />
+            </div>
+          ) : kpi && (
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
               <StatCard
                 label="Total Grievances (All Depts)"
@@ -130,7 +154,7 @@ export const GovernmentAdminPage: React.FC = () => {
               <StatCard
                 label="Officially Resolved"
                 value={kpi.resolved_complaints.toLocaleString()}
-                subtext={`${((kpi.resolved_complaints / kpi.total_complaints) * 100).toFixed(1)}% department closure`}
+                subtext={`${((kpi.resolved_complaints / (kpi.total_complaints || 1)) * 100).toFixed(1)}% department closure`}
                 icon={<CheckCircle2 className="h-5 w-5" />}
               />
               <StatCard
@@ -150,107 +174,141 @@ export const GovernmentAdminPage: React.FC = () => {
           )}
 
           {/* Officially Resolved % vs Citizen-Confirmed % Paired Visual */}
-          <section className="rounded-3xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 sm:p-8 shadow-2xs space-y-6">
-            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-2">
-              <div>
-                <h3 className="text-base font-bold text-stone-900 dark:text-white">
-                  Verification Reality Gap: Department-Resolved vs Citizen-Confirmed
-                </h3>
-                <p className="text-xs text-stone-500 dark:text-stone-400">
-                  Compares what field officers mark as resolved against grievances that citizens independently verified on-site.
-                </p>
-              </div>
-              <span className="text-xs font-mono font-bold text-[#800000] dark:text-rose-400 bg-rose-50 dark:bg-rose-950 px-3 py-1 rounded-full border border-rose-200 dark:border-rose-900">
-                Tamil Nadu Civic Service Standard
-              </span>
-            </div>
-
-            <div className="h-72 w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={leaderboard} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="#e7e5e4" />
-                  <XAxis dataKey="department_code" tick={{ fontSize: 11 }} stroke="#78716c" />
-                  <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} stroke="#78716c" />
-                  <Tooltip contentStyle={{ backgroundColor: '#1c1917', color: '#fff', borderRadius: '8px', fontSize: '11px', border: 'none' }} />
-                  <Legend wrapperStyle={{ fontSize: '12px' }} />
-                  <Bar dataKey="sla_compliance_rate" name="SLA Compliance %" fill="#800000" radius={[4, 4, 0, 0]} />
-                  <Bar dataKey="citizen_confirmed_rate" name="Citizen Confirmed %" fill="#059669" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </section>
+          <ChartCard
+            title="Verification Reality Gap: Department-Resolved vs Citizen-Confirmed"
+            subtitle="Compares what field officers mark as resolved against grievances that citizens independently verified on-site."
+            period="Tamil Nadu Service Standard"
+          >
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={leaderboard} margin={{ top: 10, right: 10, left: -10, bottom: 0 }}>
+                <CartesianGrid strokeDasharray="3 3" stroke="currentColor" className="text-border" />
+                <XAxis dataKey="department_code" tick={{ fontSize: 11 }} stroke="currentColor" className="text-foreground-muted" />
+                <YAxis unit="%" tick={{ fontSize: 11 }} domain={[0, 100]} stroke="currentColor" className="text-foreground-muted" />
+                <Tooltip
+                  contentStyle={{
+                    backgroundColor: 'var(--color-surface)',
+                    borderColor: 'var(--color-border)',
+                    color: 'var(--color-foreground)',
+                    borderRadius: '12px',
+                    fontSize: '11px',
+                    boxShadow: '0 4px 6px -1px rgba(0, 0, 0, 0.1)'
+                  }}
+                />
+                <Legend wrapperStyle={{ fontSize: '12px' }} />
+                <Bar dataKey="sla_compliance_rate" name="SLA Compliance %" fill="var(--color-primary)" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="citizen_confirmed_rate" name="Citizen Confirmed %" fill="#10b981" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </ChartCard>
 
           {/* Department Leaderboard Table */}
-          <section className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 shadow-2xs space-y-4">
-            <h3 className="text-sm font-bold text-stone-900 dark:text-white uppercase tracking-wider">
-              Department Governance Leaderboard
-            </h3>
-
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse text-xs">
-                <thead>
-                  <tr className="border-b border-stone-100 dark:border-stone-800 text-stone-400 font-semibold uppercase">
-                    <th className="p-3">Rank</th>
-                    <th className="p-3">Department</th>
-                    <th className="p-3">Total Volume</th>
-                    <th className="p-3">Resolved</th>
-                    <th className="p-3">SLA Compliance</th>
-                    <th className="p-3">Avg Resolution (Days)</th>
-                    <th className="p-3">Citizen Satisfaction</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-stone-100 dark:divide-stone-800">
-                  {leaderboard.map((item, idx) => (
-                    <tr key={item.department_id} className="hover:bg-stone-50 dark:hover:bg-stone-800/40">
-                      <td className="p-3 font-mono font-bold text-[#800000] dark:text-rose-400">#{idx + 1}</td>
-                      <td className="p-3 font-bold text-stone-900 dark:text-white">{item.department_name_en}</td>
-                      <td className="p-3">{item.total_complaints.toLocaleString()}</td>
-                      <td className="p-3 text-emerald-600 font-semibold">{item.resolved_complaints.toLocaleString()}</td>
-                      <td className="p-3">
-                        <span className="font-bold text-[#800000] dark:text-rose-400">{item.sla_compliance_rate}%</span>
-                      </td>
-                      <td className="p-3 text-stone-500">{item.avg_resolution_days}d</td>
-                      <td className="p-3 text-amber-500 font-bold">★ {item.avg_rating}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+          <Card className="p-0 overflow-hidden">
+            <div className="p-5 border-b border-border flex items-center justify-between">
+              <div>
+                <h3 className="text-sm font-bold text-foreground">
+                  Department Governance Leaderboard
+                </h3>
+                <p className="text-xs text-foreground-muted mt-0.5">
+                  Statewide performance ranking based on verified grievance delivery
+                </p>
+              </div>
+              <Badge variant="secondary">
+                {leaderboard.length} Departments
+              </Badge>
             </div>
-          </section>
+
+            <TableContainer>
+              <table className="w-full text-left border-collapse text-xs">
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Rank</TableHead>
+                    <TableHead>Department</TableHead>
+                    <TableHead>Total Volume</TableHead>
+                    <TableHead>Resolved</TableHead>
+                    <TableHead>SLA Compliance</TableHead>
+                    <TableHead>Avg Resolution</TableHead>
+                    <TableHead className="text-right">Citizen Rating</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {leaderboard.map((item, idx) => (
+                    <TableRow key={item.department_id}>
+                      <TableCell className="font-mono font-bold text-primary">
+                        #{idx + 1}
+                      </TableCell>
+                      <TableCell className="font-bold text-foreground">
+                        {item.department_name_en}
+                      </TableCell>
+                      <TableCell>{item.total_complaints.toLocaleString()}</TableCell>
+                      <TableCell className="text-emerald-600 dark:text-emerald-400 font-semibold">
+                        {item.resolved_complaints.toLocaleString()}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant="primary" size="sm">
+                          {item.sla_compliance_rate}%
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-foreground-muted">
+                        {item.avg_resolution_days}d
+                      </TableCell>
+                      <TableCell className="text-right text-amber-500 font-bold">
+                        ★ {item.avg_rating}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </table>
+            </TableContainer>
+          </Card>
         </div>
       ) : (
         /* Master Data CRUD View */
         <div className="space-y-6">
-          <div className="flex items-center justify-between border-b border-stone-200 dark:border-stone-800 pb-3">
+          <div className="flex flex-wrap items-center justify-between gap-3 border-b border-border pb-3">
             <div className="flex gap-2">
               <button
+                type="button"
                 onClick={() => setCrudSection('departments')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${crudSection === 'departments' ? 'bg-[#800000] text-white' : 'text-stone-500 hover:text-stone-900'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition min-h-[36px] ${
+                  crudSection === 'departments'
+                    ? 'bg-primary text-primary-contrast shadow-xs'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
+                }`}
               >
                 Departments ({departments.length})
               </button>
               <button
+                type="button"
                 onClick={() => setCrudSection('wards')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${crudSection === 'wards' ? 'bg-[#800000] text-white' : 'text-stone-500 hover:text-stone-900'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition min-h-[36px] ${
+                  crudSection === 'wards'
+                    ? 'bg-primary text-primary-contrast shadow-xs'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
+                }`}
               >
                 Wards ({wards.length})
               </button>
               <button
+                type="button"
                 onClick={() => setCrudSection('categories')}
-                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition ${crudSection === 'categories' ? 'bg-[#800000] text-white' : 'text-stone-500 hover:text-stone-900'}`}
+                className={`px-3 py-1.5 rounded-lg text-xs font-bold transition min-h-[36px] ${
+                  crudSection === 'categories'
+                    ? 'bg-primary text-primary-contrast shadow-xs'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
+                }`}
               >
                 Categories ({categories.length})
               </button>
             </div>
 
             {crudSection === 'departments' && (
-              <button
+              <Button
+                variant="primary"
                 onClick={() => setCreateDeptModal(true)}
-                className="inline-flex items-center gap-1.5 rounded-xl bg-[#800000] hover:bg-[#680000] px-3.5 py-1.5 text-xs font-bold text-white shadow-xs transition"
+                leftIcon={<Plus className="h-4 w-4" />}
               >
-                <Plus className="h-4 w-4" />
-                <span>Add Department</span>
-              </button>
+                Add Department
+              </Button>
             )}
           </div>
 
@@ -263,10 +321,10 @@ export const GovernmentAdminPage: React.FC = () => {
                 {
                   key: 'is_active',
                   header: 'Status',
-                  render: (d) => (
-                    <span className="rounded-full bg-emerald-50 text-emerald-700 px-2 py-0.5 text-[10px] font-bold">
+                  render: () => (
+                    <Badge variant="success" size="sm">
                       Active
-                    </span>
+                    </Badge>
                   ),
                 },
               ]}
@@ -307,57 +365,74 @@ export const GovernmentAdminPage: React.FC = () => {
           )}
 
           {/* Create Department Modal */}
-          <ConfirmDialog
-            isOpen={createDeptModal}
-            title="Create New Department"
-            description="Add a new government agency or municipal board to the grievance workflow system."
-            confirmLabel="Create Department"
-            onConfirm={handleCreateDepartment}
-            onCancel={() => setCreateDeptModal(false)}
-          >
-            <div className="space-y-3">
-              <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Department Code (e.g. TRN)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={deptCode}
-                  onChange={(e) => setDeptCode(e.target.value.toUpperCase())}
-                  placeholder="e.g. TRN"
-                  className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white p-2 text-xs"
-                />
+          {createDeptModal && (
+            <Modal
+              isOpen={createDeptModal}
+              onClose={() => setCreateDeptModal(false)}
+              title="Create New Department"
+              size="md"
+            >
+              <div className="space-y-4">
+                <p className="text-xs text-foreground-muted">
+                  Add a new government agency or municipal board to the grievance workflow system.
+                </p>
+
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Department Code (e.g. TRN)
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    value={deptCode}
+                    onChange={(e) => setDeptCode(e.target.value.toUpperCase())}
+                    placeholder="e.g. TRN"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Name (English)
+                  </label>
+                  <Input
+                    type="text"
+                    required
+                    value={deptNameEn}
+                    onChange={(e) => setDeptNameEn(e.target.value)}
+                    placeholder="e.g. Public Transport Corporation"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-bold text-foreground mb-1.5">
+                    Name (Tamil)
+                  </label>
+                  <Input
+                    type="text"
+                    value={deptNameTa}
+                    onChange={(e) => setDeptNameTa(e.target.value)}
+                    placeholder="e.g. போக்குவரத்து கழகம்"
+                  />
+                </div>
+
+                <div className="pt-3 border-t border-border flex justify-end gap-2">
+                  <Button
+                    variant="ghost"
+                    onClick={() => setCreateDeptModal(false)}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    variant="primary"
+                    onClick={handleCreateDepartment}
+                  >
+                    Create Department
+                  </Button>
+                </div>
               </div>
-              <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Name (English)
-                </label>
-                <input
-                  type="text"
-                  required
-                  value={deptNameEn}
-                  onChange={(e) => setDeptNameEn(e.target.value)}
-                  placeholder="e.g. Public Transport Corporation"
-                  className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white p-2 text-xs"
-                />
-              </div>
-              <div>
-                <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                  Name (Tamil)
-                </label>
-                <input
-                  type="text"
-                  value={deptNameTa}
-                  onChange={(e) => setDeptNameTa(e.target.value)}
-                  placeholder="e.g. போக்குவரத்து கழகம்"
-                  className="w-full rounded-xl border border-stone-200 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 text-stone-900 dark:text-white p-2 text-xs"
-                />
-              </div>
-            </div>
-          </ConfirmDialog>
+            </Modal>
+          )}
         </div>
       )}
     </div>
   );
 };
+

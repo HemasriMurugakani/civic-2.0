@@ -1,17 +1,30 @@
 import React, { useState, useEffect } from 'react';
 import { useSearchParams } from 'react-router-dom';
 import {
-  Trophy, Award, Shield, User, Lock, CheckCircle2,
-  ChevronRight, Sparkles, Filter, Loader2, Save, EyeOff, Eye
+  Trophy, Award, Shield, Lock, CheckCircle2,
+  Loader2, Save, Eye, Users
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
 import { GamificationProgress, LeaderboardData, BadgeCatalogItem } from '@/lib/types';
 import { toast } from 'sonner';
+import {
+  PageHeader,
+  Card,
+  CardHeader,
+  CardTitle,
+  CardDescription,
+  CardContent,
+  CardFooter,
+  Badge,
+  Button,
+  Input,
+  Skeleton
+} from '@/components/ui';
 
 export const LeaderboardPage: React.FC = () => {
   const { user } = useAuth();
-  const [searchParams, setSearchParams] = useSearchParams();
+  const [searchParams] = useSearchParams();
 
   const [activeTab, setActiveTab] = useState<'leaderboard' | 'badges' | 'privacy'>(
     (searchParams.get('tab') as any) || 'leaderboard'
@@ -67,7 +80,6 @@ export const LeaderboardPage: React.FC = () => {
       });
       setProgress(res);
       toast.success('Privacy settings updated successfully!');
-      // Reload leaderboard to reflect name change or opt-out
       const lbRes = await api.getCivicLeaderboard({ scope, period, limit: 50 });
       setLeaderboard(lbRes);
     } catch (err: any) {
@@ -77,100 +89,95 @@ export const LeaderboardPage: React.FC = () => {
     }
   };
 
-  const getRarityBadgeColor = (rarity: string) => {
+  const getRarityBadgeVariant = (rarity: string): 'default' | 'info' | 'secondary' | 'warning' => {
     switch (rarity) {
       case 'common':
-        return 'bg-stone-100 text-stone-700 dark:bg-stone-800 dark:text-stone-300 border-stone-200';
+        return 'secondary';
       case 'rare':
-        return 'bg-sky-50 text-sky-800 dark:bg-sky-950/60 dark:text-sky-300 border-sky-200';
+        return 'info';
       case 'epic':
-        return 'bg-purple-50 text-purple-800 dark:bg-purple-950/60 dark:text-purple-300 border-purple-200';
+        return 'default';
       case 'legendary':
-        return 'bg-amber-50 text-amber-800 dark:bg-amber-950/60 dark:text-amber-300 border-amber-300';
+        return 'warning';
       default:
-        return 'bg-stone-100 text-stone-700 border-stone-200';
+        return 'secondary';
     }
   };
 
   const topThree = leaderboard?.items.slice(0, 3) || [];
-  const remaining = leaderboard?.items.slice(3) || [];
 
   return (
-    <div className="max-w-6xl mx-auto space-y-8 pb-12">
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 border-b border-stone-200/80 dark:border-stone-800 pb-6">
-        <div>
-          <span className="text-xs font-bold uppercase tracking-wider text-[#800000] dark:text-rose-400">
-            Civic Recognition & Gamification
-          </span>
-          <h1 className="text-2xl sm:text-3xl font-extrabold tracking-tight text-stone-900 dark:text-white mt-1">
-            Community Leaderboard & Badges
-          </h1>
-          <p className="mt-1 text-xs text-stone-500 dark:text-stone-400 font-tamil">
-            குரல் கொடுக்கும் மக்கள் · ஊரை மாற்றும் சாதனையாளர்கள்
-          </p>
-        </div>
-
-        {/* Tab Switcher */}
-        <div className="flex items-center gap-1.5 p-1 rounded-2xl bg-stone-100 dark:bg-stone-800/80 border border-stone-200/80 dark:border-stone-700 text-xs font-bold">
-          <button
-            type="button"
-            onClick={() => setActiveTab('leaderboard')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition ${
-              activeTab === 'leaderboard'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-2xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <Trophy className="h-3.5 w-3.5 text-amber-500" />
-            <span>Leaderboard</span>
-          </button>
-
-          <button
-            type="button"
-            onClick={() => setActiveTab('badges')}
-            className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition ${
-              activeTab === 'badges'
-                ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-2xs'
-                : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
-            }`}
-          >
-            <Award className="h-3.5 w-3.5 text-[#800000] dark:text-rose-400" />
-            <span>Badges ({badges.length})</span>
-          </button>
-
-          {user && (
+    <div className="max-w-6xl mx-auto space-y-6 pb-12">
+      <PageHeader
+        title="Community Leaderboard & Badges"
+        titleTa="குரல் கொடுக்கும் மக்கள் · ஊரை மாற்றும் சாதனையாளர்கள்"
+        subtitle="Celebrate active civic champions, track points, and earn recognition across Tamil Nadu."
+        badge={
+          <Badge variant="primary" dot pulse>
+            Civic Recognition
+          </Badge>
+        }
+        actions={
+          <div className="flex items-center gap-1.5 p-1 rounded-xl bg-surface-muted border border-border text-xs font-semibold">
             <button
               type="button"
-              onClick={() => setActiveTab('privacy')}
-              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-xl transition ${
-                activeTab === 'privacy'
-                  ? 'bg-white dark:bg-stone-900 text-stone-900 dark:text-white shadow-2xs'
-                  : 'text-stone-600 dark:text-stone-400 hover:text-stone-900'
+              onClick={() => setActiveTab('leaderboard')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition min-h-[36px] ${
+                activeTab === 'leaderboard'
+                  ? 'bg-surface text-foreground shadow-xs font-bold'
+                  : 'text-foreground-muted hover:text-foreground'
               }`}
             >
-              <Shield className="h-3.5 w-3.5 text-stone-500" />
-              <span>Privacy</span>
+              <Trophy className="h-4 w-4 text-amber-500" />
+              <span>Leaderboard</span>
             </button>
-          )}
-        </div>
-      </div>
+
+            <button
+              type="button"
+              onClick={() => setActiveTab('badges')}
+              className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition min-h-[36px] ${
+                activeTab === 'badges'
+                  ? 'bg-surface text-foreground shadow-xs font-bold'
+                  : 'text-foreground-muted hover:text-foreground'
+              }`}
+            >
+              <Award className="h-4 w-4 text-primary" />
+              <span>Badges ({badges.length})</span>
+            </button>
+
+            {user && (
+              <button
+                type="button"
+                onClick={() => setActiveTab('privacy')}
+                className={`flex items-center gap-1.5 px-3.5 py-1.5 rounded-lg transition min-h-[36px] ${
+                  activeTab === 'privacy'
+                    ? 'bg-surface text-foreground shadow-xs font-bold'
+                    : 'text-foreground-muted hover:text-foreground'
+                }`}
+              >
+                <Shield className="h-4 w-4 text-foreground-muted" />
+                <span>Privacy</span>
+              </button>
+            )}
+          </div>
+        }
+      />
 
       {/* TAB 1: LEADERBOARD */}
       {activeTab === 'leaderboard' && (
         <div className="space-y-6">
           {/* Filters Bar: Scope & Period */}
-          <div className="flex flex-wrap items-center justify-between gap-3 bg-white dark:bg-stone-900 p-3 rounded-2xl border border-stone-200/90 dark:border-stone-800 shadow-2xs text-xs font-semibold">
+          <div className="flex flex-wrap items-center justify-between gap-3 bg-surface p-3 rounded-2xl border border-border shadow-xs text-xs font-semibold">
             {/* Scope Toggle */}
             <div className="flex items-center gap-1.5">
-              <span className="text-stone-400 text-[11px] uppercase tracking-wider mr-1">Region:</span>
+              <span className="text-foreground-muted text-[11px] uppercase tracking-wider mr-1">Region:</span>
               <button
                 type="button"
                 onClick={() => setScope('global')}
-                className={`px-3 py-1.5 rounded-xl transition ${
+                className={`px-3 py-1.5 rounded-lg transition min-h-[36px] ${
                   scope === 'global'
-                    ? 'bg-[#800000] text-white shadow-2xs font-bold'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                    ? 'bg-primary text-primary-contrast shadow-xs font-bold'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
                 }`}
               >
                 Tamil Nadu (Statewide)
@@ -178,10 +185,10 @@ export const LeaderboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setScope('district')}
-                className={`px-3 py-1.5 rounded-xl transition ${
+                className={`px-3 py-1.5 rounded-lg transition min-h-[36px] ${
                   scope === 'district'
-                    ? 'bg-[#800000] text-white shadow-2xs font-bold'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                    ? 'bg-primary text-primary-contrast shadow-xs font-bold'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
                 }`}
               >
                 My Ward & District
@@ -190,14 +197,14 @@ export const LeaderboardPage: React.FC = () => {
 
             {/* Period Toggle */}
             <div className="flex items-center gap-1.5">
-              <span className="text-stone-400 text-[11px] uppercase tracking-wider mr-1">Period:</span>
+              <span className="text-foreground-muted text-[11px] uppercase tracking-wider mr-1">Period:</span>
               <button
                 type="button"
                 onClick={() => setPeriod('all')}
-                className={`px-3 py-1.5 rounded-xl transition ${
+                className={`px-3 py-1.5 rounded-lg transition min-h-[36px] ${
                   period === 'all'
-                    ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold shadow-2xs'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                    ? 'bg-foreground text-background font-bold shadow-xs'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
                 }`}
               >
                 All Time
@@ -205,10 +212,10 @@ export const LeaderboardPage: React.FC = () => {
               <button
                 type="button"
                 onClick={() => setPeriod('month')}
-                className={`px-3 py-1.5 rounded-xl transition ${
+                className={`px-3 py-1.5 rounded-lg transition min-h-[36px] ${
                   period === 'month'
-                    ? 'bg-stone-900 dark:bg-white text-white dark:text-stone-900 font-bold shadow-2xs'
-                    : 'bg-stone-100 dark:bg-stone-800 text-stone-600 dark:text-stone-300'
+                    ? 'bg-foreground text-background font-bold shadow-xs'
+                    : 'bg-surface-muted text-foreground-muted hover:text-foreground'
                 }`}
               >
                 This Month
@@ -217,8 +224,13 @@ export const LeaderboardPage: React.FC = () => {
           </div>
 
           {loading ? (
-            <div className="flex items-center justify-center p-16">
-              <Loader2 className="h-8 w-8 animate-spin text-[#800000]" />
+            <div className="space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <Skeleton className="h-44 rounded-2xl" />
+                <Skeleton className="h-48 rounded-2xl" />
+                <Skeleton className="h-44 rounded-2xl" />
+              </div>
+              <Skeleton className="h-64 rounded-2xl" />
             </div>
           ) : (
             <>
@@ -227,52 +239,54 @@ export const LeaderboardPage: React.FC = () => {
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-4 pt-2">
                   {/* Rank 2 (Silver) */}
                   {topThree[1] && (
-                    <div className="order-2 md:order-1 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center shadow-2xs space-y-3 relative overflow-hidden">
-                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-stone-100 dark:bg-stone-800 text-xl font-extrabold text-stone-600 dark:text-stone-300 border border-stone-300">
+                    <Card className="order-2 md:order-1 text-center space-y-3 relative overflow-hidden">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-muted text-xl font-extrabold text-foreground-muted border border-border mx-auto">
                         🥈 2
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-stone-900 dark:text-white truncate">
+                        <h3 className="text-base font-bold text-foreground truncate">
                           {topThree[1].display_name}
                         </h3>
-                        <p className="text-xs text-stone-500">{topThree[1].level_title}</p>
+                        <p className="text-xs text-foreground-muted">{topThree[1].level_title}</p>
                       </div>
-                      <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex justify-around text-xs">
+                      <div className="pt-2 border-t border-border flex justify-around text-xs">
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Score</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-sm">{topThree[1].score}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Score</span>
+                          <strong className="text-foreground font-mono text-sm">{topThree[1].score}</strong>
                         </div>
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Badges</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-sm">{topThree[1].badge_count}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Badges</span>
+                          <strong className="text-foreground font-mono text-sm">{topThree[1].badge_count}</strong>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   )}
 
                   {/* Rank 1 (Gold) */}
                   {topThree[0] && (
-                    <div className="order-1 md:order-2 rounded-3xl border-2 border-amber-300 dark:border-amber-700 bg-linear-to-b from-amber-50/50 via-white to-amber-50/20 dark:from-stone-900 dark:via-stone-900 dark:to-stone-950 p-7 text-center shadow-xs space-y-3 relative overflow-hidden -mt-2">
-                      <div className="absolute top-2 right-3 text-[10px] font-extrabold uppercase tracking-widest text-amber-600 dark:text-amber-400">
-                        Top Contributor
+                    <div className="order-1 md:order-2 rounded-2xl border-2 border-amber-400 dark:border-amber-600 bg-linear-to-b from-amber-500/10 via-surface to-amber-500/5 p-7 text-center shadow-raised space-y-3 relative overflow-hidden -mt-2">
+                      <div className="absolute top-2 right-3">
+                        <Badge variant="warning" size="sm">
+                          Top Contributor
+                        </Badge>
                       </div>
-                      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400 text-stone-900 text-2xl font-black shadow-xs">
+                      <div className="inline-flex h-14 w-14 items-center justify-center rounded-2xl bg-amber-400 text-stone-900 text-2xl font-black shadow-xs mx-auto">
                         🥇 1
                       </div>
                       <div>
-                        <h3 className="text-lg font-black text-stone-900 dark:text-white truncate">
+                        <h3 className="text-lg font-black text-foreground truncate">
                           {topThree[0].display_name}
                         </h3>
-                        <p className="text-xs font-bold text-[#800000] dark:text-rose-400">{topThree[0].level_title}</p>
+                        <p className="text-xs font-bold text-primary">{topThree[0].level_title}</p>
                       </div>
-                      <div className="pt-2 border-t border-amber-200/60 dark:border-stone-800 flex justify-around text-xs">
+                      <div className="pt-2 border-t border-amber-300/40 dark:border-amber-800/40 flex justify-around text-xs">
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Score</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-base font-bold">{topThree[0].score}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Score</span>
+                          <strong className="text-foreground font-mono text-base font-bold">{topThree[0].score}</strong>
                         </div>
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Badges</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-base font-bold">{topThree[0].badge_count}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Badges</span>
+                          <strong className="text-foreground font-mono text-base font-bold">{topThree[0].badge_count}</strong>
                         </div>
                       </div>
                     </div>
@@ -280,39 +294,42 @@ export const LeaderboardPage: React.FC = () => {
 
                   {/* Rank 3 (Bronze) */}
                   {topThree[2] && (
-                    <div className="order-3 rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 p-6 text-center shadow-2xs space-y-3 relative overflow-hidden">
-                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-orange-100 dark:bg-orange-950/40 text-xl font-extrabold text-orange-700 dark:text-orange-300 border border-orange-200">
+                    <Card className="order-3 text-center space-y-3 relative overflow-hidden">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-2xl bg-surface-muted text-xl font-extrabold text-foreground-muted border border-border mx-auto">
                         🥉 3
                       </div>
                       <div>
-                        <h3 className="text-base font-bold text-stone-900 dark:text-white truncate">
+                        <h3 className="text-base font-bold text-foreground truncate">
                           {topThree[2].display_name}
                         </h3>
-                        <p className="text-xs text-stone-500">{topThree[2].level_title}</p>
+                        <p className="text-xs text-foreground-muted">{topThree[2].level_title}</p>
                       </div>
-                      <div className="pt-2 border-t border-stone-100 dark:border-stone-800 flex justify-around text-xs">
+                      <div className="pt-2 border-t border-border flex justify-around text-xs">
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Score</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-sm">{topThree[2].score}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Score</span>
+                          <strong className="text-foreground font-mono text-sm">{topThree[2].score}</strong>
                         </div>
                         <div>
-                          <span className="text-[10px] text-stone-400 block uppercase">Badges</span>
-                          <strong className="text-stone-900 dark:text-white font-mono text-sm">{topThree[2].badge_count}</strong>
+                          <span className="text-[10px] text-foreground-muted block uppercase">Badges</span>
+                          <strong className="text-foreground font-mono text-sm">{topThree[2].badge_count}</strong>
                         </div>
                       </div>
-                    </div>
+                    </Card>
                   )}
                 </div>
               )}
 
-              {/* Leaderboard Table */}
-              <div className="rounded-3xl border border-stone-200 dark:border-stone-800 bg-white dark:bg-stone-900 shadow-2xs overflow-hidden">
-                <div className="p-4 border-b border-stone-100 dark:border-stone-800 text-xs font-bold text-stone-500 uppercase tracking-wider flex items-center justify-between">
-                  <span>Participants ({leaderboard?.total_participants || 0})</span>
-                  <span className="text-[11px] text-stone-400 font-normal">Scores computed from points ledger</span>
+              {/* Leaderboard List */}
+              <Card className="overflow-hidden p-0">
+                <div className="p-4 border-b border-border text-xs font-bold text-foreground-muted uppercase tracking-wider flex items-center justify-between">
+                  <span className="flex items-center gap-1.5">
+                    <Users className="h-4 w-4" />
+                    Participants ({leaderboard?.total_participants || 0})
+                  </span>
+                  <span className="text-[11px] text-foreground-muted font-normal">Scores computed from verified actions</span>
                 </div>
 
-                <div className="divide-y divide-stone-100 dark:divide-stone-800">
+                <div className="divide-y divide-border">
                   {leaderboard?.items.map((item) => {
                     const isMe = item.is_current_user || (progress && item.public_id === progress.public_id);
 
@@ -321,47 +338,47 @@ export const LeaderboardPage: React.FC = () => {
                         key={item.public_id}
                         className={`flex items-center justify-between px-6 py-4 text-xs transition ${
                           isMe
-                            ? 'bg-rose-50/70 dark:bg-rose-950/40 font-bold border-l-4 border-l-[#800000]'
-                            : 'hover:bg-stone-50/60 dark:hover:bg-stone-850'
+                            ? 'bg-primary/10 font-bold border-l-4 border-l-primary'
+                            : 'hover:bg-surface-muted/50'
                         }`}
                       >
                         <div className="flex items-center gap-4">
-                          <span className="font-mono font-bold text-stone-400 w-6 text-center">
+                          <span className="font-mono font-bold text-foreground-muted w-6 text-center">
                             #{item.rank}
                           </span>
 
-                          <div className="h-8 w-8 rounded-full bg-stone-100 dark:bg-stone-800 flex items-center justify-center font-bold text-stone-600 dark:text-stone-300">
+                          <div className="h-8 w-8 rounded-full bg-surface-muted flex items-center justify-center font-bold text-foreground-muted border border-border">
                             {item.display_name.charAt(0)}
                           </div>
 
                           <div>
                             <div className="flex items-center gap-2">
-                              <span className="font-bold text-stone-900 dark:text-white text-sm">
+                              <span className="font-bold text-foreground text-sm">
                                 {item.display_name}
                               </span>
                               {isMe && (
-                                <span className="rounded-md bg-[#800000] text-white px-1.5 py-0.5 text-[10px] font-bold">
+                                <Badge variant="primary" size="sm">
                                   You
-                                </span>
+                                </Badge>
                               )}
                             </div>
-                            <span className="text-[11px] text-stone-400">
+                            <span className="text-[11px] text-foreground-muted">
                               {item.level_title} · {item.badge_count} badges
                             </span>
                           </div>
                         </div>
 
                         <div className="text-right">
-                          <span className="font-mono text-base font-extrabold text-[#800000] dark:text-rose-400">
+                          <span className="font-mono text-base font-extrabold text-primary">
                             {item.score}
                           </span>
-                          <span className="text-[10px] text-stone-400 block">points</span>
+                          <span className="text-[10px] text-foreground-muted block">points</span>
                         </div>
                       </div>
                     );
                   })}
                 </div>
-              </div>
+              </Card>
             </>
           )}
         </div>
@@ -372,43 +389,39 @@ export const LeaderboardPage: React.FC = () => {
         <div className="space-y-6">
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
             {badges.map((b) => (
-              <div
+              <Card
                 key={b.id}
-                className={`rounded-3xl border p-5 shadow-2xs transition relative flex flex-col justify-between ${
+                className={`flex flex-col justify-between transition ${
                   b.earned
-                    ? 'border-[#800000]/60 bg-white dark:bg-stone-900 shadow-xs'
-                    : 'border-stone-200 dark:border-stone-800 bg-stone-50/50 dark:bg-stone-900/40 opacity-75'
+                    ? 'border-primary/50 shadow-xs'
+                    : 'opacity-75 bg-surface-muted/30'
                 }`}
               >
                 <div>
-                  <div className="flex items-start justify-between gap-2">
-                    <span className="text-3xl p-2 rounded-2xl bg-stone-100 dark:bg-stone-800/80 inline-block mb-3">
+                  <div className="flex items-start justify-between gap-2 mb-3">
+                    <span className="text-3xl p-2 rounded-2xl bg-surface-muted inline-block border border-border">
                       🎖️
                     </span>
 
-                    <span
-                      className={`text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full border ${getRarityBadgeColor(
-                        b.rarity
-                      )}`}
-                    >
+                    <Badge variant={getRarityBadgeVariant(b.rarity)} size="sm">
                       {b.rarity}
-                    </span>
+                    </Badge>
                   </div>
 
-                  <h3 className="text-base font-extrabold text-stone-900 dark:text-white">
+                  <h3 className="text-base font-bold text-foreground">
                     {b.name_en}
                   </h3>
-                  <p className="text-xs font-semibold text-stone-500 font-tamil mt-0.5">
+                  <p className="text-xs font-semibold text-foreground-muted font-tamil mt-0.5">
                     {b.name_ta}
                   </p>
 
-                  <p className="mt-2 text-xs text-stone-600 dark:text-stone-300 leading-relaxed">
+                  <p className="mt-2 text-xs text-foreground-muted leading-relaxed">
                     {b.description_en}
                   </p>
                 </div>
 
-                <div className="mt-4 pt-3 border-t border-stone-100 dark:border-stone-800 flex items-center justify-between text-xs font-semibold">
-                  <span className="text-amber-600 dark:text-amber-400 font-mono">
+                <div className="mt-4 pt-3 border-t border-border flex items-center justify-between text-xs font-semibold">
+                  <span className="text-amber-500 font-mono font-bold">
                     +{b.points_reward} pts reward
                   </span>
 
@@ -418,13 +431,13 @@ export const LeaderboardPage: React.FC = () => {
                       <span>Unlocked</span>
                     </span>
                   ) : (
-                    <span className="inline-flex items-center gap-1 text-stone-400 text-xs">
+                    <span className="inline-flex items-center gap-1 text-foreground-muted text-xs">
                       <Lock className="h-3.5 w-3.5" />
-                      <span>Locked (Need {b.threshold})</span>
+                      <span>Locked ({b.threshold})</span>
                     </span>
                   )}
                 </div>
-              </div>
+              </Card>
             ))}
           </div>
         </div>
@@ -432,65 +445,63 @@ export const LeaderboardPage: React.FC = () => {
 
       {/* TAB 3: PRIVACY SETTINGS */}
       {activeTab === 'privacy' && user && (
-        <form onSubmit={handleSavePrivacy} className="max-w-2xl bg-white dark:bg-stone-900 rounded-3xl border border-stone-200 dark:border-stone-800 p-6 sm:p-8 shadow-2xs space-y-6">
-          <div>
-            <h3 className="text-lg font-bold text-stone-900 dark:text-white">
-              Civic Privacy & Anonymity
-            </h3>
-            <p className="text-xs text-stone-500 dark:text-stone-400 mt-1">
-              Choose how your name appears on community leaderboards and verification posts. Your phone number and email are always kept private and never visible to the public.
-            </p>
-          </div>
-
-          <div className="space-y-4">
+        <Card className="max-w-2xl p-6 sm:p-8">
+          <form onSubmit={handleSavePrivacy} className="space-y-6">
             <div>
-              <label className="block text-xs font-bold text-stone-700 dark:text-stone-300 mb-1">
-                Public Display Pseudonym / Name
-              </label>
-              <input
-                type="text"
-                value={displayName}
-                onChange={(e) => setDisplayName(e.target.value)}
-                placeholder="e.g. Citizen #4182 or Kavitha S."
-                required
-                className="w-full rounded-xl border border-stone-300 dark:border-stone-700 bg-stone-50 dark:bg-stone-800 px-3.5 py-2.5 text-xs text-stone-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-[#800000]"
-              />
-              <p className="mt-1 text-[11px] text-stone-400">
-                Shown on leaderboards and community verified lists instead of your real name.
+              <h3 className="text-lg font-bold text-foreground">
+                Civic Privacy & Anonymity
+              </h3>
+              <p className="text-xs text-foreground-muted mt-1 leading-relaxed">
+                Choose how your name appears on community leaderboards and verification posts. Your phone number and email are always kept private and never visible to the public.
               </p>
             </div>
 
-            <div className="rounded-2xl border border-stone-200 dark:border-stone-800 p-4 bg-stone-50 dark:bg-stone-850 flex items-start gap-3">
-              <input
-                id="opt-out-toggle"
-                type="checkbox"
-                checked={optOut}
-                onChange={(e) => setOptOut(e.target.checked)}
-                className="mt-1 h-4 w-4 rounded border-stone-300 text-[#800000] focus:ring-[#800000]"
-              />
-              <label htmlFor="opt-out-toggle" className="text-xs cursor-pointer">
-                <span className="font-bold text-stone-900 dark:text-white block">
-                  Opt out of public leaderboards
-                </span>
-                <span className="text-stone-500 block mt-0.5">
-                  When enabled, your points and profile will be hidden from public ranking boards. You will still earn points and unlock badges in your private dashboard.
-                </span>
-              </label>
-            </div>
-          </div>
+            <div className="space-y-4">
+              <div>
+                <label className="block text-xs font-bold text-foreground mb-1.5">
+                  Public Display Pseudonym / Name
+                </label>
+                <Input
+                  type="text"
+                  value={displayName}
+                  onChange={(e) => setDisplayName(e.target.value)}
+                  placeholder="e.g. Citizen #4182 or Kavitha S."
+                  required
+                  helperText="Shown on leaderboards and community verified lists instead of your real name."
+                />
+              </div>
 
-          <div className="pt-4 border-t border-stone-100 dark:border-stone-800 flex justify-end">
-            <button
-              type="submit"
-              disabled={savingPrivacy}
-              className="rounded-xl bg-[#800000] hover:bg-[#680000] px-5 py-2.5 text-xs font-bold text-white shadow-2xs transition flex items-center gap-2"
-            >
-              {savingPrivacy && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
-              <Save className="h-3.5 w-3.5" />
-              <span>Save Privacy Settings</span>
-            </button>
-          </div>
-        </form>
+              <div className="rounded-xl border border-border p-4 bg-surface-muted/50 flex items-start gap-3">
+                <input
+                  id="opt-out-toggle"
+                  type="checkbox"
+                  checked={optOut}
+                  onChange={(e) => setOptOut(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-border text-primary focus:ring-primary"
+                />
+                <label htmlFor="opt-out-toggle" className="text-xs cursor-pointer">
+                  <span className="font-bold text-foreground block">
+                    Opt out of public leaderboards
+                  </span>
+                  <span className="text-foreground-muted block mt-0.5">
+                    When enabled, your points and profile will be hidden from public ranking boards. You will still earn points and unlock badges in your private dashboard.
+                  </span>
+                </label>
+              </div>
+            </div>
+
+            <div className="pt-4 border-t border-border flex justify-end">
+              <Button
+                type="submit"
+                variant="primary"
+                isLoading={savingPrivacy}
+                leftIcon={<Save className="h-4 w-4" />}
+              >
+                Save Privacy Settings
+              </Button>
+            </div>
+          </form>
+        </Card>
       )}
     </div>
   );
