@@ -1064,5 +1064,42 @@ class CampaignUserTaskProgress(Base):
     user = relationship("User")
 
 
+class ChatSession(Base):
+    __tablename__ = "chat_sessions"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_uuid = Column(String(64), unique=True, index=True, nullable=False)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="SET NULL"), nullable=True, index=True)
+    persona = Column(String(32), default="citizen", nullable=False)
+    language = Column(String(8), default="en", nullable=False)
+    title = Column(String(255), nullable=True)
+    context_metadata = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    user = relationship("User")
+    messages = relationship("ChatMessage", back_populates="session", cascade="all, delete-orphan", order_by="ChatMessage.created_at")
+
+
+class ChatMessage(Base):
+    __tablename__ = "chat_messages"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(Integer, ForeignKey("chat_sessions.id", ondelete="CASCADE"), nullable=False, index=True)
+    role = Column(String(16), nullable=False)  # user, assistant, system, tool
+    content = Column(Text, nullable=False)
+    language = Column(String(8), default="en", nullable=False)
+    intent = Column(String(64), nullable=True)
+    citations = Column(JSON, nullable=True)
+    suggested_actions = Column(JSON, nullable=True)
+    action_proposal = Column(JSON, nullable=True)
+    tool_calls = Column(JSON, nullable=True)
+    tool_results = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    session = relationship("ChatSession", back_populates="messages")
+
+
+
 
 

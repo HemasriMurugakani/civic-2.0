@@ -25,6 +25,7 @@ from app.api.v1.community import router as community_router
 from app.api.v1.education import router as education_router
 from app.api.v1.spots import router as spots_router
 from app.api.v1.campaigns import router as campaigns_router
+from app.api.v1.chat import router as chat_router
 from app.core.database import engine, Base
 
 # Configure logging
@@ -137,6 +138,7 @@ app.include_router(community_router, prefix=api_v1_prefix)
 app.include_router(education_router, prefix=api_v1_prefix)
 app.include_router(spots_router, prefix=api_v1_prefix)
 app.include_router(campaigns_router, prefix=api_v1_prefix)
+app.include_router(chat_router, prefix=api_v1_prefix)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():
