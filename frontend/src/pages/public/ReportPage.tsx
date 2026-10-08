@@ -67,11 +67,35 @@ export const ReportPage: React.FC = () => {
   const [locationStatus, setLocationStatus] = useState<string>('');
   const [photoPreview, setPhotoPreview] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState<boolean>(false);
+  const [spotId, setSpotId] = useState<number | null>(null);
+  const [spotName, setSpotName] = useState<string>('');
 
   useEffect(() => {
     const cat = searchParams.get('category');
     if (cat && CATEGORIES.some((c) => c.id === cat)) {
       setSelectedCatId(cat);
+    }
+
+    const sid = searchParams.get('spot_id');
+    const sname = searchParams.get('spot_name');
+    const saddr = searchParams.get('address');
+    const slat = searchParams.get('lat');
+    const slng = searchParams.get('lng');
+
+    if (sid) {
+      setSpotId(Number(sid));
+      if (sname) {
+        setSpotName(sname);
+        setTitle(`Issue at ${sname}`);
+      }
+      if (saddr) {
+        setConstituency(saddr.split(',')[0] || 'Chennai');
+        setDescription(`Observed at adopted spot (${sname || 'Spot #' + sid}) located at ${saddr}.`);
+      }
+      if (slat && slng) {
+        setLocationCoords({ lat: parseFloat(slat), lng: parseFloat(slng) });
+        setLocationStatus(`📍 Linked to Adopted Spot (${sname || sid})`);
+      }
     }
   }, [searchParams]);
 
@@ -128,6 +152,7 @@ export const ReportPage: React.FC = () => {
         latitude: locationCoords?.lat || 13.0827,
         longitude: locationCoords?.lng || 80.2707,
         is_anonymous: !user,
+        spot_id: spotId || undefined,
       });
 
       toast.success('Report submitted successfully!');
@@ -159,6 +184,28 @@ export const ReportPage: React.FC = () => {
             Choose what is wrong, add a photo and publish it for community verification.
           </p>
         </div>
+
+        {spotId && (
+          <div className="rounded-2xl border border-emerald-300/80 bg-emerald-50/90 dark:border-emerald-800 dark:bg-emerald-950/40 p-4 text-xs text-emerald-950 dark:text-emerald-100 flex items-center justify-between gap-3 shadow-2xs">
+            <div className="flex items-center gap-3">
+              <span className="text-xl">📍</span>
+              <div>
+                <p className="font-bold text-sm text-emerald-900 dark:text-emerald-100">
+                  Reporting Issue for Adopted Spot: {spotName || `#${spotId}`}
+                </p>
+                <p className="text-emerald-700 dark:text-emerald-300">
+                  This report will be tagged and tracked on the spot&apos;s maintenance record.
+                </p>
+              </div>
+            </div>
+            <Link
+              to={`/spots/${spotId}`}
+              className="px-3 py-1.5 rounded-lg bg-emerald-700 text-white font-semibold text-xs hover:bg-emerald-800 transition shrink-0"
+            >
+              View Spot
+            </Link>
+          </div>
+        )}
 
         {/* Notice 1: Independent Civic Platform Disclaimer */}
         <div className="rounded-2xl border border-amber-200/90 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30 p-4 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-3">

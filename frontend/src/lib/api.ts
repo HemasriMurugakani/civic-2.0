@@ -8,7 +8,8 @@ import {
   ThreadListItem, ThreadDetail, ThreadReplyItem, ConnectionItem,
   ContentFlagItem, ModerationAuditLogItem,
   LearningModuleItem, LearningModuleDetail, QuizSubmissionResult, CertificateItem,
-  PublicCertificateVerify, LearningLeaderboardEntry, EducationAnalytics
+  PublicCertificateVerify, LearningLeaderboardEntry, EducationAnalytics,
+  SpotListItem, SpotDetail, SpotMapPoint, SpotListResponse, SpotCheckinItem
 } from './types';
 
 const API_BASE = '/api/v1';
@@ -479,4 +480,72 @@ export const api = {
 
   getEducationAnalytics: () =>
     request<EducationAnalytics>('/education/analytics'),
+
+  // Adopt-a-Spot (Milestone F5)
+  getSpots: (params?: {
+    search?: string;
+    spot_type?: string;
+    status?: string;
+    district?: string;
+    ward_id?: number;
+    department_id?: number;
+    limit?: number;
+    offset?: number;
+  }) => {
+    const sp = new URLSearchParams();
+    if (params?.search) sp.set('search', params.search);
+    if (params?.spot_type) sp.set('spot_type', params.spot_type);
+    if (params?.status) sp.set('status', params.status);
+    if (params?.district) sp.set('district', params.district);
+    if (params?.ward_id) sp.set('ward_id', String(params.ward_id));
+    if (params?.department_id) sp.set('department_id', String(params.department_id));
+    if (params?.limit) sp.set('limit', String(params.limit));
+    if (params?.offset) sp.set('offset', String(params.offset));
+    const qs = sp.toString() ? `?${sp.toString()}` : '';
+    return request<SpotListResponse>(`/spots${qs}`);
+  },
+
+  getSpotMapPoints: () =>
+    request<SpotMapPoint[]>('/spots/map'),
+
+  getMyAdoptedSpots: () =>
+    request<SpotListResponse>('/spots/my-adoptions'),
+
+  getSpotDetail: (spotId: number | string) =>
+    request<SpotDetail>(`/spots/${encodeURIComponent(String(spotId))}`),
+
+  adoptSpot: (spotId: number | string, data: { commitment_actions: string[]; care_frequency: string }) =>
+    request<SpotDetail>(`/spots/${encodeURIComponent(String(spotId))}/adopt`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  releaseSpot: (spotId: number | string, data?: { reason?: string }) =>
+    request<SpotDetail>(`/spots/${encodeURIComponent(String(spotId))}/release`, {
+      method: 'POST',
+      body: JSON.stringify(data || {}),
+    }),
+
+  checkinSpot: (spotId: number | string, data: { note: string; photo_url?: string; actions_completed?: string[] }) =>
+    request<SpotCheckinItem>(`/spots/${encodeURIComponent(String(spotId))}/checkin`, {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+
+  updateSpotStatus: (spotId: number | string, data: { status: string; note?: string }) =>
+    request<SpotDetail>(`/spots/${encodeURIComponent(String(spotId))}/status`, {
+      method: 'PATCH',
+      body: JSON.stringify(data),
+    }),
+
+  bulkCreateSpots: (spots: any[]) =>
+    request<{ created_count: number; status: string }>('/spots/bulk', {
+      method: 'POST',
+      body: JSON.stringify({ spots }),
+    }),
+
+  runSpotReminders: () =>
+    request<{ checked_spots_count: number; reminders_sent: number; auto_released_count: number; details: string[] }>('/spots/scheduler/check-reminders', {
+      method: 'POST',
+    }),
 };

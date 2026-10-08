@@ -27,6 +27,11 @@ erDiagram
     COMPLAINTS ||--o{ NOTIFICATIONS : "triggers"
     COMPLAINTS ||--o{ AI_PREDICTIONS : "inspected by AI"
     COMPLAINTS ||--o{ COMPLAINT_EMBEDDINGS : "vectorized"
+    SPOTS ||--o{ COMPLAINTS : "linked to"
+    USERS ||--o{ SPOTS : "adopts"
+    SPOTS ||--o{ SPOT_CHECKINS : "has check-ins"
+    USERS ||--o{ SPOT_CHECKINS : "submits"
+    SPOTS ||--o{ SPOT_ADOPTIONS_HISTORY : "audit trail"
 
     DEPARTMENTS {
         int id PK
@@ -197,6 +202,50 @@ erDiagram
         int ward_id FK
         int complaint_count
         text description
+        timestamp created_at
+    }
+
+    SPOTS {
+        int id PK
+        string name
+        enum spot_type "park | bus_stop | water_body | street | school_surroundings | drain | public_toilet | other"
+        text description
+        text address
+        float latitude
+        float longitude
+        string district
+        int ward_id FK
+        int department_id FK
+        enum status "available | pending_approval | adopted | maintenance"
+        int adopted_by FK
+        timestamp adopted_at
+        json commitment_actions
+        enum care_frequency "daily | weekly | biweekly | monthly"
+        timestamp last_checkin_at
+        int missed_checkins_count
+        int max_missed_checkins
+        string photo_url
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    SPOT_CHECKINS {
+        int id PK
+        int spot_id FK
+        int user_id FK
+        text note
+        string photo_url
+        json actions_completed
+        int points_awarded
+        timestamp created_at
+    }
+
+    SPOT_ADOPTIONS_HISTORY {
+        int id PK
+        int spot_id FK
+        int user_id FK
+        string action
+        text reason
         timestamp created_at
     }
 ```

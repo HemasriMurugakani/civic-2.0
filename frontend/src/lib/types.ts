@@ -676,5 +676,105 @@ export interface EducationAnalytics {
   }[];
 }
 
+// ==========================================
+// Adopt-a-Spot (Milestone F5)
+// ==========================================
+export type SpotType =
+  | 'park'
+  | 'bus_stop'
+  | 'water_body'
+  | 'street'
+  | 'school_surroundings'
+  | 'drain'
+  | 'public_toilet'
+  | 'other';
 
+export type SpotStatus = 'available' | 'pending_approval' | 'adopted' | 'maintenance';
 
+export type CareFrequency = 'daily' | 'weekly' | 'biweekly' | 'monthly';
+
+export interface SpotCheckinItem {
+  id: number;
+  spot_id: number;
+  user_id: number;
+  user_display_name?: string;
+  note: string;
+  photo_url?: string;
+  actions_completed: string[];
+  points_awarded: number;
+  created_at: string;
+}
+
+export interface SpotHistoryItem {
+  id: number;
+  spot_id: number;
+  user_id: number;
+  user_display_name?: string;
+  action: string;
+  reason?: string;
+  created_at: string;
+}
+
+export interface SpotListItem {
+  id: number;
+  name: string;
+  spot_type: SpotType;
+  description?: string;
+  address: string;
+  latitude: number;
+  longitude: number;
+  district: string;
+  ward_id?: number;
+  ward_name?: string;
+  department_id?: number;
+  department_name?: string;
+  status: SpotStatus;
+  adopted_by?: number;
+  adopter_name?: string;
+  adopted_at?: string;
+  care_frequency: CareFrequency;
+  commitment_actions: string[];
+  last_checkin_at?: string;
+  missed_checkins_count: number;
+  photo_url?: string;
+  checkins_count: number;
+  linked_complaints_count: number;
+  created_at: string;
+}
+
+export interface SpotDetail extends SpotListItem {
+  checkins: SpotCheckinItem[];
+  history: SpotHistoryItem[];
+  linked_complaints: {
+    id: number;
+    reference_no: string;
+    title: string;
+    status: string;
+    created_at: string;
+  }[];
+}
+
+export interface SpotMapPoint {
+  id: number;
+  name: string;
+  spot_type: SpotType;
+  latitude: number;
+  longitude: number;
+  status: SpotStatus;
+  address: string;
+  district: string;
+  ward_id?: number;
+  adopter_name?: string;
+  last_checkin_at?: string;
+}
+
+export interface SpotListResponse {
+  total: number;
+  items: SpotListItem[];
+  stats: {
+    total_spots: number;
+    available_spots: number;
+    adopted_spots: number;
+    recent_checkins: number;
+  };
+}

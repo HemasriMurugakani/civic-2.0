@@ -449,6 +449,15 @@ def create_public_issue(
         channel=ComplaintChannel.WEB
     )
 
+    if payload.get("spot_id"):
+        try:
+            complaint.spot_id = int(payload["spot_id"])
+            db.add(complaint)
+            db.commit()
+            db.refresh(complaint)
+        except (ValueError, TypeError):
+            pass
+
     return {
         "success": True,
         "id": complaint.id,

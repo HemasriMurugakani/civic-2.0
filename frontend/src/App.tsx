@@ -31,6 +31,8 @@ import { ThreadDetailPage } from './pages/community/ThreadDetailPage';
 import { EducationHubPage } from './pages/education/EducationHubPage';
 import { ModuleDetailPage } from './pages/education/ModuleDetailPage';
 import { CertificateVerifyPage } from './pages/education/CertificateVerifyPage';
+import { SpotsExplorerPage } from './pages/spots/SpotsExplorerPage';
+import { SpotDetailPage } from './pages/spots/SpotDetailPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -67,6 +69,8 @@ export function App() {
               <Route path="/education" element={<EducationHubPage />} />
               <Route path="/education/modules/:slug" element={<ModuleDetailPage />} />
               <Route path="/verify/:code" element={<CertificateVerifyPage />} />
+              <Route path="/spots" element={<SpotsExplorerPage />} />
+              <Route path="/spots/:id" element={<SpotDetailPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

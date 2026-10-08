@@ -27,7 +27,8 @@ from app.models.entities import (
     CitizenConnection, ContentFlag, ModerationAuditLog,
     GroupVisibility, GroupMemberRole, FlagStatus, ConnectionStatus,
     LearningModule, ModuleLesson, QuizQuestion, UserModuleProgress, Certificate,
-    ModuleDifficulty, ModuleProgressStatus
+    ModuleDifficulty, ModuleProgressStatus,
+    Spot, SpotCheckin, SpotAdoptionHistory, SpotType, SpotStatus, CareFrequency
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -1261,9 +1262,317 @@ Civic participation extends far beyond filing complaints when things break:
             )
             db.add(p3)
 
-        db.commit()
-        print("✅ Seeded demo learner progress and certificates for test citizens!")
+def seed_spots(db: Session):
+    print("📍 Seeding Adopt-a-Spot: Adoptable civic spots & demo check-ins (Milestone F5)...")
+    if db.query(Spot).count() > 0:
+        print("  Adoptable spots already exist. Skipping.")
+        return
 
+    c1 = db.query(User).filter(User.email == "citizen1@tngov.in").first()
+    c2 = db.query(User).filter(User.email == "citizen2@tngov.in").first()
+    san_dept = db.query(Department).filter(Department.code == "SAN").first()
+    roa_dept = db.query(Department).filter(Department.code == "ROA").first()
+    wat_dept = db.query(Department).filter(Department.code == "WAT").first()
+    ward_51 = db.query(Ward).filter(Ward.ward_number == 51).first()
+    ward_102 = db.query(Ward).filter(Ward.ward_number == 102).first()
+    ward_117 = db.query(Ward).filter(Ward.ward_number == 117).first()
+    ward_130 = db.query(Ward).filter(Ward.ward_number == 130).first()
+
+    now = datetime.utcnow()
+
+    spots_catalog = [
+        {
+            "name": "Tower Park Biodiversity Garden",
+            "spot_type": SpotType.PARK,
+            "description": "Native flora garden bed with butterfly bushes and indigenous medicinal shrubs inside Anna Nagar Tower Park. Features children's nature walkway.",
+            "address": "Inside Tower Park, 3rd Avenue, Anna Nagar West, Chennai 600040",
+            "latitude": 13.0850,
+            "longitude": 80.2101,
+            "district": "Chennai Central",
+            "ward_id": ward_102.id if ward_102 else None,
+            "department_id": san_dept.id if san_dept else None,
+            "status": SpotStatus.ADOPTED,
+            "adopted_by": c1.id if c1 else None,
+            "adopted_at": now - timedelta(days=18),
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Weeding & pruning", "Litter cleanup", "Compost pit maintenance", "Native shrub watering"],
+            "last_checkin_at": now - timedelta(days=2),
+            "photo_url": "https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Nageswara Rao Park Pond Enclosure",
+            "spot_type": SpotType.WATER_BODY,
+            "description": "Historical rain-fed pond buffer and lotus pond surroundings in heart of Mylapore, visited daily by morning walkers and senior citizens.",
+            "address": "Luz Corner, Royapettah High Road, Mylapore, Chennai 600004",
+            "latitude": 13.0336,
+            "longitude": 80.2662,
+            "district": "Chennai South",
+            "ward_id": ward_117.id if ward_117 else None,
+            "department_id": wat_dept.id if wat_dept else None,
+            "status": SpotStatus.ADOPTED,
+            "adopted_by": c2.id if c2 else None,
+            "adopted_at": now - timedelta(days=12),
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Debris clearance from water edge", "Boundary fencing inspection", "Bird feeder refill"],
+            "last_checkin_at": now - timedelta(days=4),
+            "photo_url": "https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Central Square Metro Bus Shelter",
+            "spot_type": SpotType.BUS_STOP,
+            "description": "Heavily utilized transit shelter outside Chennai Central Metro Station. Critical point for thousands of suburban commuters daily.",
+            "address": "Poonamallee High Road, Park Town, Chennai 600003",
+            "latitude": 13.0827,
+            "longitude": 80.2707,
+            "district": "Chennai North",
+            "ward_id": ward_51.id if ward_51 else None,
+            "department_id": roa_dept.id if roa_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.DAILY,
+            "commitment_actions": ["Bench sanitization & cleaning", "Notice board maintenance", "Litter bin monitoring"],
+            "photo_url": "https://images.unsplash.com/photo-1570125909232-eb263c188f7e?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Marina Promenade Children's Play Area",
+            "spot_type": SpotType.PARK,
+            "description": "Public beachfront play area with swings, slides, and shaded canopy seating, loved by local families.",
+            "address": "Kamarajar Salai, Marina Beach Promenade, Triplicane, Chennai 600005",
+            "latitude": 13.0500,
+            "longitude": 80.2824,
+            "district": "Chennai Central",
+            "ward_id": ward_117.id if ward_117 else None,
+            "department_id": san_dept.id if san_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Play equipment safety check", "Sandpit cleaning", "Tree basin watering"],
+            "photo_url": "https://images.unsplash.com/photo-1519331379826-f10be5486c6f?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Gandhi Nagar 4th Main Avenue Median",
+            "spot_type": SpotType.STREET,
+            "description": "Green landscaped road divider avenue with flowering bougainvillea and pedestrian safety refuge island.",
+            "address": "4th Main Road, Gandhi Nagar, Adyar, Chennai 600020",
+            "latitude": 13.0067,
+            "longitude": 80.2570,
+            "district": "Chennai South",
+            "ward_id": ward_130.id if ward_130 else None,
+            "department_id": roa_dept.id if roa_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.BIWEEKLY,
+            "commitment_actions": ["Median flower bed care", "Signage visibility clearance", "Litter collection"],
+            "photo_url": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Corporation Girls Higher Secondary School Green Buffer",
+            "spot_type": SpotType.SCHOOL_SURROUNDINGS,
+            "description": "Safe school pedestrian zone with shade trees, zebra crossing buffer, and student waiting bays.",
+            "address": "Ranganathan Street Junction, T. Nagar, Chennai 600017",
+            "latitude": 13.0418,
+            "longitude": 80.2341,
+            "district": "Chennai Central",
+            "ward_id": ward_102.id if ward_102 else None,
+            "department_id": roa_dept.id if roa_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Sidewalk obstacle clearance", "Zebra crossing visibility check", "Litter-free zone maintenance"],
+            "photo_url": "https://images.unsplash.com/photo-1580582932707-520aed937b7b?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Otteri Nullah Feeder Stormwater Drain",
+            "spot_type": SpotType.DRAIN,
+            "description": "Critical stormwater drainage inlet channel preventing monsoon waterlogging in low-lying residential lanes.",
+            "address": "Strahans Road Junction, Otteri, Purasawalkam, Chennai 600012",
+            "latitude": 13.0915,
+            "longitude": 80.2520,
+            "district": "Chennai North",
+            "ward_id": ward_51.id if ward_51 else None,
+            "department_id": roa_dept.id if roa_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Plastic trash netting inspection", "Silt blockage alerts", "Mosquito larvicide reporting"],
+            "photo_url": "https://images.unsplash.com/photo-1544620347-c4fd4a3d5957?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Besant Nagar Beach Public Restroom Surroundings",
+            "spot_type": SpotType.PUBLIC_TOILET,
+            "description": "Modern e-toilet and public hygiene block perimeter near 6th Avenue beach access, serving hundreds of tourists.",
+            "address": "6th Avenue Promenade, Elliot's Beach, Besant Nagar, Chennai 600090",
+            "latitude": 12.9982,
+            "longitude": 80.2694,
+            "district": "Chennai South",
+            "ward_id": ward_130.id if ward_130 else None,
+            "department_id": san_dept.id if san_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.DAILY,
+            "commitment_actions": ["Handwash dispenser check", "Lighting & signage audit", "Odor & water leak reporting"],
+            "photo_url": "https://images.unsplash.com/photo-1584622650111-993a426fbf0a?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "Velachery Lake Waterfront Walkway",
+            "spot_type": SpotType.WATER_BODY,
+            "description": "Restored urban lake bund with 1.2km walking trail, reed beds, and community bird observation gazebo.",
+            "address": "Lake View Road, Gandhi Salai, Velachery, Chennai 600042",
+            "latitude": 12.9815,
+            "longitude": 80.2180,
+            "district": "Chennai South",
+            "ward_id": ward_130.id if ward_130 else None,
+            "department_id": wat_dept.id if wat_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Bund stabilization check", "Trash skimmer monitoring", "Flora surveillance"],
+            "photo_url": "https://images.unsplash.com/photo-1473448912268-2022ce9509d8?w=800&auto=format&fit=crop&q=80",
+        },
+        {
+            "name": "R.A. Puram Community Herbal Garden",
+            "spot_type": SpotType.PARK,
+            "description": "Neighborhood civic green space dedicated to indigenous medicinal plants, tulsi, neem, and community composting.",
+            "address": "2nd Main Road, R.A. Puram, Mandaveli, Chennai 600028",
+            "latitude": 13.0238,
+            "longitude": 80.2555,
+            "district": "Chennai South",
+            "ward_id": ward_117.id if ward_117 else None,
+            "department_id": san_dept.id if san_dept else None,
+            "status": SpotStatus.AVAILABLE,
+            "care_frequency": CareFrequency.WEEKLY,
+            "commitment_actions": ["Herbal plant tagging & care", "Mulching beds", "Drip irrigation maintenance"],
+            "photo_url": "https://images.unsplash.com/photo-1466692476868-aef1dfb1e735?w=800&auto=format&fit=crop&q=80",
+        }
+    ]
+
+    created_spots = []
+    for s_info in spots_catalog:
+        spot = Spot(
+            name=s_info["name"],
+            spot_type=s_info["spot_type"],
+            description=s_info["description"],
+            address=s_info["address"],
+            latitude=s_info["latitude"],
+            longitude=s_info["longitude"],
+            district=s_info["district"],
+            ward_id=s_info["ward_id"],
+            department_id=s_info["department_id"],
+            status=s_info["status"],
+            adopted_by=s_info.get("adopted_by"),
+            adopted_at=s_info.get("adopted_at"),
+            care_frequency=s_info["care_frequency"],
+            commitment_actions=s_info["commitment_actions"],
+            last_checkin_at=s_info.get("last_checkin_at"),
+            photo_url=s_info.get("photo_url"),
+            missed_checkins_count=0,
+            max_missed_checkins=3,
+            created_at=now - timedelta(days=30),
+            updated_at=now - timedelta(days=2)
+        )
+        db.add(spot)
+        db.flush()
+        created_spots.append(spot)
+
+    # Add checkins and history for adopted spots
+    s1 = created_spots[0]
+    if s1 and c1:
+        h1 = SpotAdoptionHistory(
+            spot_id=s1.id,
+            user_id=c1.id,
+            action="adopted",
+            reason="Adopted with commitment: " + ", ".join(s1.commitment_actions),
+            created_at=s1.adopted_at
+        )
+        db.add(h1)
+
+        chk1 = SpotCheckin(
+            spot_id=s1.id,
+            user_id=c1.id,
+            note="Cleared fallen dry leaves around native shrubs and weeded the perimeter flower bed. Compost pit turned.",
+            photo_url="https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?w=800&auto=format&fit=crop&q=80",
+            actions_completed=["Weeding & pruning", "Compost pit maintenance"],
+            points_awarded=15,
+            created_at=now - timedelta(days=10)
+        )
+        db.add(chk1)
+
+        chk2 = SpotCheckin(
+            spot_id=s1.id,
+            user_id=c1.id,
+            note="Weekly deep watering completed. Inspected butterfly pathway benches; clean and litter-free.",
+            photo_url="https://images.unsplash.com/photo-1588880331179-bc9b93a8cb5e?w=800&auto=format&fit=crop&q=80",
+            actions_completed=["Native shrub watering", "Litter cleanup"],
+            points_awarded=15,
+            created_at=now - timedelta(days=2)
+        )
+        db.add(chk2)
+
+        db.add(PointsLedger(
+            user_id=c1.id,
+            points=100,
+            reason="spot_adopted",
+            source_type="spot",
+            source_id=str(s1.id),
+            created_at=s1.adopted_at
+        ))
+        db.add(PointsLedger(
+            user_id=c1.id,
+            points=15,
+            reason="spot_checkin",
+            source_type="spot_checkin",
+            source_id=f"{s1.id}_chk1",
+            created_at=now - timedelta(days=10)
+        ))
+        db.add(PointsLedger(
+            user_id=c1.id,
+            points=15,
+            reason="spot_checkin",
+            source_type="spot_checkin",
+            source_id=f"{s1.id}_chk2",
+            created_at=now - timedelta(days=2)
+        ))
+
+    s2 = created_spots[1]
+    if s2 and c2:
+        h2 = SpotAdoptionHistory(
+            spot_id=s2.id,
+            user_id=c2.id,
+            action="adopted",
+            reason="Adopted with commitment: " + ", ".join(s2.commitment_actions),
+            created_at=s2.adopted_at
+        )
+        db.add(h2)
+
+        chk3 = SpotCheckin(
+            spot_id=s2.id,
+            user_id=c2.id,
+            note="Removed plastic wrappers caught along pond stone embankment. Boundary wire fence is in sound condition.",
+            photo_url="https://images.unsplash.com/photo-1518495973542-4542c06a5843?w=800&auto=format&fit=crop&q=80",
+            actions_completed=["Debris clearance from water edge", "Boundary fencing inspection"],
+            points_awarded=15,
+            created_at=now - timedelta(days=4)
+        )
+        db.add(chk3)
+
+        db.add(PointsLedger(
+            user_id=c2.id,
+            points=100,
+            reason="spot_adopted",
+            source_type="spot",
+            source_id=str(s2.id),
+            created_at=s2.adopted_at
+        ))
+        db.add(PointsLedger(
+            user_id=c2.id,
+            points=15,
+            reason="spot_checkin",
+            source_type="spot_checkin",
+            source_id=f"{s2.id}_chk3",
+            created_at=now - timedelta(days=4)
+        ))
+
+    s4 = created_spots[3]
+    if s4:
+        existing_comp = db.query(Complaint).filter(Complaint.spot_id == None).first()
+        if existing_comp:
+            existing_comp.spot_id = s4.id
+
+    db.commit()
+    print("✅ Successfully seeded 10 adoptable civic spots with demo adoptions & check-ins!")
 
 
 def seed_database(reset: bool = False):
@@ -1286,6 +1595,10 @@ def seed_database(reset: bool = False):
             seed_projects(db)
         if db.query(Group).count() == 0:
             seed_community(db)
+        if db.query(LearningModule).count() == 0:
+            seed_education(db)
+        if db.query(Spot).count() == 0:
+            seed_spots(db)
         print("Database already contains data. Use --reset to re-seed from scratch.")
         db.close()
         return
@@ -1842,6 +2155,9 @@ def seed_database(reset: bool = False):
 
     # 8. Seed Civic Education & Knowledge Hub (Milestone F4)
     seed_education(db)
+
+    # 9. Seed Adopt-a-Spot (Milestone F5)
+    seed_spots(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)

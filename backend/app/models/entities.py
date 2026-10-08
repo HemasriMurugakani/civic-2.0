@@ -175,6 +175,7 @@ class Complaint(Base):
     resolved_at = Column(DateTime, nullable=True)
     verified_at = Column(DateTime, nullable=True)
     project_id = Column(Integer, ForeignKey("projects.id"), nullable=True, index=True)
+    spot_id = Column(Integer, ForeignKey("spots.id"), nullable=True, index=True)
 
     __table_args__ = (
         Index("idx_complaint_status_ward", "status", "ward_id"),
@@ -186,6 +187,7 @@ class Complaint(Base):
     category = relationship("ComplaintCategory", back_populates="complaints")
     ward = relationship("Ward", back_populates="complaints")
     project = relationship("Project", back_populates="complaints")
+    spot = relationship("Spot", back_populates="complaints")
     assignments = relationship("ComplaintAssignment", back_populates="complaint", cascade="all, delete-orphan")
     status_history = relationship("ComplaintStatusHistory", back_populates="complaint", cascade="all, delete-orphan", order_by="ComplaintStatusHistory.timestamp")
     comments = relationship("ComplaintComment", back_populates="complaint", cascade="all, delete-orphan", order_by="ComplaintComment.created_at")
@@ -833,5 +835,97 @@ class Certificate(Base):
 
     user = relationship("User", back_populates="certificates")
     module = relationship("LearningModule", back_populates="certificates")
+
+
+# ==========================================
+# Adopt-a-Spot (Milestone F5)
+# ==========================================
+class SpotType(str, enum.Enum):
+    PARK = "park"
+    BUS_STOP = "bus_stop"
+    WATER_BODY = "water_body"
+    STREET = "street"
+    SCHOOL_SURROUNDINGS = "school_surroundings"
+    DRAIN = "drain"
+    PUBLIC_TOILET = "public_toilet"
+    OTHER = "other"
+
+
+class SpotStatus(str, enum.Enum):
+    AVAILABLE = "available"
+    PENDING_APPROVAL = "pending_approval"
+    ADOPTED = "adopted"
+    MAINTENANCE = "maintenance"
+
+
+class CareFrequency(str, enum.Enum):
+    DAILY = "daily"
+    WEEKLY = "weekly"
+    BIWEEKLY = "biweekly"
+    MONTHLY = "monthly"
+
+
+class Spot(Base):
+    __tablename__ = "spots"
+
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(255), nullable=False, index=True)
+    spot_type = Column(SQLEnum(SpotType), default=SpotType.PARK, nullable=False, index=True)
+    description = Column(Text, nullable=True)
+    address = Column(Text, nullable=False)
+    latitude = Column(Float, nullable=False)
+    longitude = Column(Float, nullable=False)
+    district = Column(String(100), nullable=False, index=True)
+    ward_id = Column(Integer, ForeignKey("wards.id"), nullable=True, index=True)
+    department_id = Column(Integer, ForeignKey("departments.id"), nullable=True, index=True)
+    status = Column(SQLEnum(SpotStatus), default=SpotStatus.AVAILABLE, nullable=False, index=True)
+    adopted_by = Column(Integer, ForeignKey("users.id"), nullable=True, index=True)
+    adopted_at = Column(DateTime, nullable=True)
+    commitment_actions = Column(JSON, default=list, nullable=False)
+    care_frequency = Column(SQLEnum(CareFrequency), default=CareFrequency.WEEKLY, nullable=False)
+    last_checkin_at = Column(DateTime, nullable=True)
+    missed_checkins_count = Column(Integer, default=0, nullable=False)
+    max_missed_checkins = Column(Integer, default=3, nullable=False)
+    photo_url = Column(String(500), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    ward = relationship("Ward")
+    department = relationship("Department")
+    adopter = relationship("User", foreign_keys=[adopted_by])
+    checkins = relationship("SpotCheckin", back_populates="spot", cascade="all, delete-orphan", order_by="SpotCheckin.created_at.desc()")
+    adoption_history = relationship("SpotAdoptionHistory", back_populates="spot", cascade="all, delete-orphan", order_by="SpotAdoptionHistory.created_at.desc()")
+    complaints = relationship("Complaint", back_populates="spot")
+
+
+class SpotCheckin(Base):
+    __tablename__ = "spot_checkins"
+
+    id = Column(Integer, primary_key=True, index=True)
+    spot_id = Column(Integer, ForeignKey("spots.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    note = Column(Text, nullable=False)
+    photo_url = Column(String(500), nullable=True)
+    actions_completed = Column(JSON, default=list, nullable=False)
+    points_awarded = Column(Integer, default=15, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False, index=True)
+
+    spot = relationship("Spot", back_populates="checkins")
+    user = relationship("User")
+
+
+class SpotAdoptionHistory(Base):
+    __tablename__ = "spot_adoptions_history"
+
+    id = Column(Integer, primary_key=True, index=True)
+    spot_id = Column(Integer, ForeignKey("spots.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    action = Column(String(50), nullable=False)
+    reason = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    spot = relationship("Spot", back_populates="adoption_history")
+    user = relationship("User")
+
 
 
