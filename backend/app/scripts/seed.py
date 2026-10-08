@@ -28,7 +28,9 @@ from app.models.entities import (
     GroupVisibility, GroupMemberRole, FlagStatus, ConnectionStatus,
     LearningModule, ModuleLesson, QuizQuestion, UserModuleProgress, Certificate,
     ModuleDifficulty, ModuleProgressStatus,
-    Spot, SpotCheckin, SpotAdoptionHistory, SpotType, SpotStatus, CareFrequency
+    Spot, SpotCheckin, SpotAdoptionHistory, SpotType, SpotStatus, CareFrequency,
+    Campaign, CampaignTask, CampaignParticipant, CampaignUserTaskProgress,
+    CampaignStatus, CampaignTaskType
 )
 
 def create_sample_evidence_files(upload_dir: str):
@@ -168,6 +170,42 @@ def seed_gamification(db: Session):
             "event_type": "score_threshold",
             "threshold": 750,
             "points_reward": 150,
+        },
+        {
+            "code": "monsoon_guardian",
+            "name_en": "Monsoon Guardian",
+            "name_ta": "மழைக்கால பாதுகாவலர்",
+            "description_en": "Completed all civic tasks during the Monsoon Preparedness Campaign.",
+            "description_ta": "மழைக்கால தயார்நிலை இயக்கத்தின் அனைத்துப் பணிகளையும் முடித்துள்ளீர்கள்.",
+            "icon": "CloudRain",
+            "rarity": BadgeRarity.EPIC,
+            "event_type": "campaign_completed",
+            "threshold": 1,
+            "points_reward": 100,
+        },
+        {
+            "code": "swachhata_champion",
+            "name_en": "Swachhata Champion",
+            "name_ta": "தூய்மை நாயகன்",
+            "description_en": "Achieved all sanitation milestones during the Swachhata Cleanliness Drive.",
+            "description_ta": "தூய்மை இயக்கத்தில் தூய்மை இலக்குகளை எட்டியுள்ளீர்கள்.",
+            "icon": "Sparkles",
+            "rarity": BadgeRarity.RARE,
+            "event_type": "campaign_completed",
+            "threshold": 1,
+            "points_reward": 80,
+        },
+        {
+            "code": "road_safety_envoy",
+            "name_en": "Road Safety Envoy",
+            "name_ta": "சாலை பாதுகாப்பு தூதர்",
+            "description_en": "Audited local roads and traffic blackspots during Road Safety Week.",
+            "description_ta": "சாலை பாதுகாப்பு வாரத்தில் சாலைகளைத் தணிக்கை செய்துள்ளீர்கள்.",
+            "icon": "Car",
+            "rarity": BadgeRarity.EPIC,
+            "event_type": "campaign_completed",
+            "threshold": 1,
+            "points_reward": 75,
         },
     ]
 
@@ -1575,6 +1613,231 @@ def seed_spots(db: Session):
     print("✅ Successfully seeded 10 adoptable civic spots with demo adoptions & check-ins!")
 
 
+def seed_campaigns(db: Session):
+    print("📢 Seeding Seasonal Campaigns: Campaigns, tasks, and participant milestones (Milestone F6)...")
+    if db.query(Campaign).count() > 0:
+        print("  Seasonal campaigns already exist. Skipping.")
+        return
+
+    admin = db.query(User).filter(User.role == UserRole.GOV_ADMIN).first()
+    c1 = db.query(User).filter(User.email == "citizen1@tngov.in").first()
+    c2 = db.query(User).filter(User.email == "citizen2@tngov.in").first()
+    other_citizens = db.query(User).filter(User.role == UserRole.CITIZEN, ~User.email.in_(["citizen1@tngov.in", "citizen2@tngov.in"])).limit(6).all()
+
+    b_monsoon = db.query(Badge).filter(Badge.code == "monsoon_guardian").first()
+    b_swachhata = db.query(Badge).filter(Badge.code == "swachhata_champion").first()
+    b_roads = db.query(Badge).filter(Badge.code == "road_safety_envoy").first()
+    b_hero = db.query(Badge).filter(Badge.code == "campaign_hero").first()
+
+    now = datetime.utcnow()
+
+    campaigns_catalog = [
+        {
+            "title": "Monsoon Preparedness 2026",
+            "slug": "monsoon-preparedness-2026",
+            "description": "Pre-monsoon civic audit and drain desilting drive across Greater Chennai Corporation. Help identify clogged storm water drains, missing manhole covers, and water stagnation zones before the heavy rains.",
+            "season_theme": "monsoon",
+            "banner_image_url": "https://images.unsplash.com/photo-1534274988757-a28bf1a57c17?w=1200&auto=format&fit=crop&q=80",
+            "start_at": now - timedelta(days=15),
+            "end_at": now + timedelta(days=45),
+            "target_metric": "reports_filed",
+            "target_value": 150,
+            "region": "Chennai",
+            "status": CampaignStatus.ACTIVE,
+            "points_reward": 100,
+            "badge_id": b_monsoon.id if b_monsoon else None,
+            "tasks": [
+                {
+                    "title": "Report 3 Drainage or Water Inundation Issues",
+                    "description": "File civic complaints for blocked stormwater drains, stagnant runoff, or low-lying road flooding.",
+                    "task_type": CampaignTaskType.REPORT_ISSUES,
+                    "target_count": 3,
+                    "points_reward": 30,
+                    "display_order": 1,
+                },
+                {
+                    "title": "Verify 5 Community Reports in Your Ward",
+                    "description": "Conduct field checks and verify complaints filed by neighbors in your zone.",
+                    "task_type": CampaignTaskType.VERIFY_REPORTS,
+                    "target_count": 5,
+                    "points_reward": 25,
+                    "display_order": 2,
+                },
+                {
+                    "title": "Pass Monsoon Disaster Preparedness Module",
+                    "description": "Complete civic education course on flood safety and emergency municipal response.",
+                    "task_type": CampaignTaskType.COMPLETE_MODULE,
+                    "target_count": 1,
+                    "points_reward": 25,
+                    "display_order": 3,
+                },
+                {
+                    "title": "Adopt a Public Spot or Drain Buffer",
+                    "description": "Adopt and maintain an urban green space, waterway bund, or community corner.",
+                    "task_type": CampaignTaskType.ADOPT_SPOT,
+                    "target_count": 1,
+                    "points_reward": 40,
+                    "display_order": 4,
+                },
+            ]
+        },
+        {
+            "title": "Namma Chennai Swachhata Cleanliness Drive",
+            "slug": "namma-chennai-swachhata-drive",
+            "description": "City-wide zero-waste community mobilization. Clear roadside garbage dump blackspots, monitor segregated bin collection, and promote composting in your neighborhood.",
+            "season_theme": "swachhata",
+            "banner_image_url": "https://images.unsplash.com/photo-1532996122724-e3c354a0b15b?w=1200&auto=format&fit=crop&q=80",
+            "start_at": now - timedelta(days=7),
+            "end_at": now + timedelta(days=21),
+            "target_metric": "reports_verified",
+            "target_value": 80,
+            "region": "Chennai",
+            "status": CampaignStatus.ACTIVE,
+            "points_reward": 80,
+            "badge_id": b_swachhata.id if b_swachhata else None,
+            "tasks": [
+                {
+                    "title": "Flag 2 Illegal Waste Dumps or Overflowing Bins",
+                    "description": "Submit GPS-tagged photos of unattended street garbage mounds or broken waste bins.",
+                    "task_type": CampaignTaskType.REPORT_ISSUES,
+                    "target_count": 2,
+                    "points_reward": 25,
+                    "display_order": 1,
+                },
+                {
+                    "title": "Verify 3 Sanitation Resolutions on Ground",
+                    "description": "Verify municipal conservancy team clearances within your ward boundary.",
+                    "task_type": CampaignTaskType.VERIFY_REPORTS,
+                    "target_count": 3,
+                    "points_reward": 20,
+                    "display_order": 2,
+                },
+                {
+                    "title": "Complete Waste Segregation Knowledge Module",
+                    "description": "Learn 3-way waste segregation rules (wet, dry, domestic hazardous).",
+                    "task_type": CampaignTaskType.COMPLETE_MODULE,
+                    "target_count": 1,
+                    "points_reward": 25,
+                    "display_order": 3,
+                },
+            ]
+        },
+        {
+            "title": "Tamil Nadu Road Safety Week 2026",
+            "slug": "road-safety-week-2026",
+            "description": "Statewide audit to eliminate traffic blackspots, defective signals, broken street medians, and dangerous road craters along bus routes.",
+            "season_theme": "road_safety",
+            "banner_image_url": "https://images.unsplash.com/photo-1545459720-aac8509eb02c?w=1200&auto=format&fit=crop&q=80",
+            "start_at": now + timedelta(days=5),
+            "end_at": now + timedelta(days=19),
+            "target_metric": "reports_filed",
+            "target_value": 100,
+            "region": "Tamil Nadu",
+            "status": CampaignStatus.SCHEDULED,
+            "points_reward": 75,
+            "badge_id": b_roads.id if b_roads else None,
+            "tasks": [
+                {
+                    "title": "Audit 3 Dangerous Potholes or Missing Signages",
+                    "description": "Document road defects that endanger two-wheelers and pedestrians.",
+                    "task_type": CampaignTaskType.REPORT_ISSUES,
+                    "target_count": 3,
+                    "points_reward": 30,
+                    "display_order": 1,
+                },
+                {
+                    "title": "Complete Pedestrian Safety Knowledge Module",
+                    "description": "Review road safety, speed regulations, and pedestrian right-of-way guidelines.",
+                    "task_type": CampaignTaskType.COMPLETE_MODULE,
+                    "target_count": 1,
+                    "points_reward": 25,
+                    "display_order": 2,
+                },
+                {
+                    "title": "Verify 4 Road Infrastructure Fixes",
+                    "description": "Confirm asphalt patch-works and street light restorations.",
+                    "task_type": CampaignTaskType.VERIFY_REPORTS,
+                    "target_count": 4,
+                    "points_reward": 20,
+                    "display_order": 3,
+                },
+            ]
+        },
+        {
+            "title": "Summer Water Conservation Mission 2025",
+            "slug": "summer-water-conservation-2025",
+            "description": "Annual community pipeline leak detection and rainwater harvesting audit before the dry months.",
+            "season_theme": "water_conservation",
+            "banner_image_url": "https://images.unsplash.com/photo-1509316975850-ff9c5deb0cd9?w=1200&auto=format&fit=crop&q=80",
+            "start_at": now - timedelta(days=120),
+            "end_at": now - timedelta(days=60),
+            "target_metric": "reports_filed",
+            "target_value": 200,
+            "region": "Chennai",
+            "status": CampaignStatus.COMPLETED,
+            "points_reward": 100,
+            "badge_id": b_hero.id if b_hero else None,
+            "tasks": [
+                {
+                    "title": "Report 2 Drinking Water Distribution Leaks",
+                    "description": "Audit roadside MetroWater pipes and valve chambers.",
+                    "task_type": CampaignTaskType.REPORT_ISSUES,
+                    "target_count": 2,
+                    "points_reward": 30,
+                    "display_order": 1,
+                },
+            ]
+        }
+    ]
+
+    for c_data in campaigns_catalog:
+        tasks_data = c_data.pop("tasks")
+        campaign = Campaign(
+            **c_data,
+            created_by=admin.id if admin else None,
+            created_at=c_data["start_at"] - timedelta(days=5),
+            updated_at=c_data["start_at"]
+        )
+        db.add(campaign)
+        db.flush()
+
+        for t_info in tasks_data:
+            task = CampaignTask(
+                campaign_id=campaign.id,
+                **t_info,
+                created_at=campaign.created_at
+            )
+            db.add(task)
+        db.flush()
+
+    # Now add realistic participants & progress for active campaigns
+    camp_monsoon = db.query(Campaign).filter(Campaign.slug == "monsoon-preparedness-2026").first()
+    camp_swachh = db.query(Campaign).filter(Campaign.slug == "namma-chennai-swachhata-drive").first()
+
+    from app.services.campaign_service import CampaignService
+    camp_service = CampaignService(db)
+
+    # 1. Citizen 1 (Kavitha S.) joins Monsoon & Swachhata
+    if c1 and camp_monsoon:
+        camp_service.join_campaign(str(camp_monsoon.id), c1)
+    if c1 and camp_swachh:
+        camp_service.join_campaign(str(camp_swachh.id), c1)
+
+    # 2. Citizen 2 (Senthil N.) joins Monsoon
+    if c2 and camp_monsoon:
+        camp_service.join_campaign(str(camp_monsoon.id), c2)
+
+    # 3. Other citizens join to populate leaderboard
+    for cit in other_citizens:
+        if camp_monsoon:
+            camp_service.join_campaign(str(camp_monsoon.id), cit)
+        if camp_swachh and random.random() < 0.7:
+            camp_service.join_campaign(str(camp_swachh.id), cit)
+
+    db.commit()
+    print("✅ Successfully seeded 4 seasonal campaigns with tasks and participant milestones!")
+
+
 def seed_database(reset: bool = False):
     random.seed(42)
     db: Session = SessionLocal()
@@ -2158,6 +2421,9 @@ def seed_database(reset: bool = False):
 
     # 9. Seed Adopt-a-Spot (Milestone F5)
     seed_spots(db)
+
+    # 10. Seed Seasonal Campaigns (Milestone F6)
+    seed_campaigns(db)
 
     # Print demo credentials table
     print("\n" + "=" * 80)

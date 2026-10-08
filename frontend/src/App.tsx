@@ -33,6 +33,8 @@ import { ModuleDetailPage } from './pages/education/ModuleDetailPage';
 import { CertificateVerifyPage } from './pages/education/CertificateVerifyPage';
 import { SpotsExplorerPage } from './pages/spots/SpotsExplorerPage';
 import { SpotDetailPage } from './pages/spots/SpotDetailPage';
+import { CampaignsExplorerPage } from './pages/campaigns/CampaignsExplorerPage';
+import { CampaignDetailPage } from './pages/campaigns/CampaignDetailPage';
 import { DevUiPage } from './pages/dev/DevUiPage';
 import { NotFoundPage, ForbiddenPage } from './pages/error/ErrorPages';
 
@@ -71,6 +73,8 @@ export function App() {
               <Route path="/verify/:code" element={<CertificateVerifyPage />} />
               <Route path="/spots" element={<SpotsExplorerPage />} />
               <Route path="/spots/:id" element={<SpotDetailPage />} />
+              <Route path="/campaigns" element={<CampaignsExplorerPage />} />
+              <Route path="/campaigns/:slug" element={<CampaignDetailPage />} />
               <Route path="/dev/ui" element={<DevUiPage />} />
 
               {/* Citizen Routes */}

@@ -9,7 +9,8 @@ import {
   ContentFlagItem, ModerationAuditLogItem,
   LearningModuleItem, LearningModuleDetail, QuizSubmissionResult, CertificateItem,
   PublicCertificateVerify, LearningLeaderboardEntry, EducationAnalytics,
-  SpotListItem, SpotDetail, SpotMapPoint, SpotListResponse, SpotCheckinItem
+  SpotListItem, SpotDetail, SpotMapPoint, SpotListResponse, SpotCheckinItem,
+  CampaignListItem, CampaignDetail, CampaignLeaderboardEntry, CampaignListResponse, CampaignSyncSummary
 } from './types';
 
 const API_BASE = '/api/v1';
@@ -548,4 +549,59 @@ export const api = {
     request<{ checked_spots_count: number; reminders_sent: number; auto_released_count: number; details: string[] }>('/spots/scheduler/check-reminders', {
       method: 'POST',
     }),
+
+  // Milestone F6: Seasonal Campaigns
+  getCampaigns: (params?: { status?: string; season_theme?: string; region?: string }) =>
+    campaignsApi.getCampaigns(params),
+  getCampaignDetail: (identifier: string | number) =>
+    campaignsApi.getCampaignDetail(identifier),
+  joinCampaign: (identifier: string | number) =>
+    campaignsApi.joinCampaign(identifier),
+  leaveCampaign: (identifier: string | number) =>
+    campaignsApi.leaveCampaign(identifier),
+  getCampaignLeaderboard: (identifier: string | number, limit: number = 50) =>
+    campaignsApi.getCampaignLeaderboard(identifier, limit),
+  syncCampaigns: () =>
+    campaignsApi.syncCampaigns(),
+  createCampaign: (data: any) =>
+    campaignsApi.createCampaign(data),
 };
+
+export const campaignsApi = {
+  getCampaigns: (params?: { status?: string; season_theme?: string; region?: string }) => {
+    const query = new URLSearchParams();
+    if (params?.status) query.append('status', params.status);
+    if (params?.season_theme) query.append('season_theme', params.season_theme);
+    if (params?.region) query.append('region', params.region);
+    const qs = query.toString();
+    return request<CampaignListResponse>(`/campaigns${qs ? `?${qs}` : ''}`);
+  },
+
+  getCampaignDetail: (identifier: string | number) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(String(identifier))}`),
+
+  joinCampaign: (identifier: string | number) =>
+    request<CampaignDetail>(`/campaigns/${encodeURIComponent(String(identifier))}/join`, {
+      method: 'POST',
+    }),
+
+  leaveCampaign: (identifier: string | number) =>
+    request<{ status: string; campaign_id: number }>(`/campaigns/${encodeURIComponent(String(identifier))}/leave`, {
+      method: 'POST',
+    }),
+
+  getCampaignLeaderboard: (identifier: string | number, limit: number = 50) =>
+    request<CampaignLeaderboardEntry[]>(`/campaigns/${encodeURIComponent(String(identifier))}/leaderboard?limit=${limit}`),
+
+  syncCampaigns: () =>
+    request<CampaignSyncSummary>('/campaigns/sync', {
+      method: 'POST',
+    }),
+
+  createCampaign: (data: any) =>
+    request<CampaignDetail>('/campaigns', {
+      method: 'POST',
+      body: JSON.stringify(data),
+    }),
+};
+

@@ -24,6 +24,7 @@ from app.api.v1.projects import router as projects_router
 from app.api.v1.community import router as community_router
 from app.api.v1.education import router as education_router
 from app.api.v1.spots import router as spots_router
+from app.api.v1.campaigns import router as campaigns_router
 from app.core.database import engine, Base
 
 # Configure logging
@@ -48,6 +49,20 @@ def run_sla_check_job():
     finally:
         db.close()
 
+def run_campaign_sync_job():
+    logger.info("Executing scheduled campaign lifecycle sync job...")
+    db = SessionLocal()
+    try:
+        from app.services.campaign_service import CampaignService
+        camp_service = CampaignService(db)
+        summary = camp_service.sync_campaign_lifecycles()
+        if summary.activated_count or summary.completed_count:
+            logger.info(f"Campaign Sync complete: {summary}")
+    except Exception as e:
+        logger.error(f"Error in campaign background syncer: {e}", exc_info=True)
+    finally:
+        db.close()
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Ensure new tables exist
@@ -65,8 +80,15 @@ async def lifespan(app: FastAPI):
             id="sla_checker",
             replace_existing=True,
         )
+        scheduler.add_job(
+            run_campaign_sync_job,
+            "interval",
+            minutes=10,
+            id="campaign_syncer",
+            replace_existing=True,
+        )
         scheduler.start()
-        logger.info("APScheduler initialized for SLA engine monitoring.")
+        logger.info("APScheduler initialized for SLA & Campaign lifecycle monitoring.")
     except Exception as e:
         logger.warning(f"Could not start background scheduler: {e}")
 
@@ -114,6 +136,7 @@ app.include_router(projects_router, prefix=api_v1_prefix)
 app.include_router(community_router, prefix=api_v1_prefix)
 app.include_router(education_router, prefix=api_v1_prefix)
 app.include_router(spots_router, prefix=api_v1_prefix)
+app.include_router(campaigns_router, prefix=api_v1_prefix)
 
 @app.get("/api/health", tags=["Health"])
 def health_check():

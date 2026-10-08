@@ -928,4 +928,106 @@ class SpotAdoptionHistory(Base):
     user = relationship("User")
 
 
+# ==========================================
+# Seasonal Campaigns (Milestone F6)
+# ==========================================
+class CampaignStatus(str, enum.Enum):
+    DRAFT = "draft"
+    SCHEDULED = "scheduled"
+    ACTIVE = "active"
+    COMPLETED = "completed"
+    CANCELLED = "cancelled"
+
+
+class CampaignTaskType(str, enum.Enum):
+    REPORT_ISSUES = "report_issues"
+    VERIFY_REPORTS = "verify_reports"
+    COMPLETE_MODULE = "complete_module"
+    ADOPT_SPOT = "adopt_spot"
+
+
+class Campaign(Base):
+    __tablename__ = "campaigns"
+
+    id = Column(Integer, primary_key=True, index=True)
+    slug = Column(String(100), unique=True, index=True, nullable=False)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=False)
+    season_theme = Column(String(100), nullable=False, index=True)
+    banner_image_url = Column(String(500), nullable=True)
+    start_at = Column(DateTime, nullable=False, index=True)
+    end_at = Column(DateTime, nullable=False, index=True)
+    target_metric = Column(String(100), default="reports_filed", nullable=False)
+    target_value = Column(Integer, default=100, nullable=False)
+    region = Column(String(100), default="Chennai", nullable=False, index=True)
+    status = Column(SQLEnum(CampaignStatus), default=CampaignStatus.SCHEDULED, nullable=False, index=True)
+    badge_id = Column(Integer, ForeignKey("badges.id", ondelete="SET NULL"), nullable=True)
+    points_reward = Column(Integer, default=50, nullable=False)
+    created_by = Column(Integer, ForeignKey("users.id"), nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    badge = relationship("Badge")
+    creator = relationship("User", foreign_keys=[created_by])
+    tasks = relationship("CampaignTask", back_populates="campaign", cascade="all, delete-orphan", order_by="CampaignTask.display_order")
+    participants = relationship("CampaignParticipant", back_populates="campaign", cascade="all, delete-orphan")
+
+
+class CampaignTask(Base):
+    __tablename__ = "campaign_tasks"
+
+    id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    title = Column(String(255), nullable=False)
+    description = Column(Text, nullable=True)
+    task_type = Column(SQLEnum(CampaignTaskType), nullable=False)
+    target_count = Column(Integer, default=1, nullable=False)
+    points_reward = Column(Integer, default=20, nullable=False)
+    display_order = Column(Integer, default=1, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    campaign = relationship("Campaign", back_populates="tasks")
+    user_progress = relationship("CampaignUserTaskProgress", back_populates="task", cascade="all, delete-orphan")
+
+
+class CampaignParticipant(Base):
+    __tablename__ = "campaign_participants"
+
+    id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    joined_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    points_earned = Column(Integer, default=0, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("campaign_id", "user_id", name="uq_campaign_participant"),
+    )
+
+    campaign = relationship("Campaign", back_populates="participants")
+    user = relationship("User")
+
+
+class CampaignUserTaskProgress(Base):
+    __tablename__ = "campaign_user_task_progress"
+
+    id = Column(Integer, primary_key=True, index=True)
+    campaign_id = Column(Integer, ForeignKey("campaigns.id", ondelete="CASCADE"), nullable=False, index=True)
+    task_id = Column(Integer, ForeignKey("campaign_tasks.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), nullable=False, index=True)
+    current_count = Column(Integer, default=0, nullable=False)
+    is_completed = Column(Boolean, default=False, nullable=False)
+    completed_at = Column(DateTime, nullable=True)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("task_id", "user_id", name="uq_campaign_user_task_progress"),
+    )
+
+    task = relationship("CampaignTask", back_populates="user_progress")
+    user = relationship("User")
+
+
+
 

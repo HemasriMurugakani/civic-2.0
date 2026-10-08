@@ -32,6 +32,12 @@ erDiagram
     SPOTS ||--o{ SPOT_CHECKINS : "has check-ins"
     USERS ||--o{ SPOT_CHECKINS : "submits"
     SPOTS ||--o{ SPOT_ADOPTIONS_HISTORY : "audit trail"
+    CAMPAIGNS ||--o{ CAMPAIGN_TASKS : "contains"
+    CAMPAIGNS ||--o{ CAMPAIGN_PARTICIPANTS : "has participants"
+    USERS ||--o{ CAMPAIGN_PARTICIPANTS : "joins"
+    CAMPAIGN_TASKS ||--o{ CAMPAIGN_USER_TASK_PROGRESS : "tracks progress"
+    USERS ||--o{ CAMPAIGN_USER_TASK_PROGRESS : "executes"
+    BADGES ||--o{ CAMPAIGNS : "rewards badge"
 
     DEPARTMENTS {
         int id PK
@@ -247,5 +253,57 @@ erDiagram
         string action
         text reason
         timestamp created_at
+    }
+
+    CAMPAIGNS {
+        int id PK
+        string title
+        string slug UK
+        text description
+        string season_theme
+        string banner_image_url
+        timestamp start_at
+        timestamp end_at
+        string target_metric
+        int target_value
+        string region
+        enum status "draft | scheduled | active | completed | cancelled"
+        int points_reward
+        int badge_id FK
+        int created_by FK
+        timestamp created_at
+        timestamp updated_at
+    }
+
+    CAMPAIGN_TASKS {
+        int id PK
+        int campaign_id FK
+        string title
+        text description
+        enum task_type "report_issues | verify_reports | complete_module | adopt_spot"
+        int target_count
+        int points_reward
+        int display_order
+        timestamp created_at
+    }
+
+    CAMPAIGN_PARTICIPANTS {
+        int id PK
+        int campaign_id FK
+        int user_id FK
+        timestamp joined_at
+        boolean is_completed
+        timestamp completed_at
+        int points_earned
+    }
+
+    CAMPAIGN_USER_TASK_PROGRESS {
+        int id PK
+        int campaign_id FK
+        int task_id FK
+        int user_id FK
+        int current_count
+        boolean is_completed
+        timestamp completed_at
     }
 ```

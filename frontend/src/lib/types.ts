@@ -778,3 +778,84 @@ export interface SpotListResponse {
     recent_checkins: number;
   };
 }
+
+// Milestone F6: Seasonal Campaigns
+export type CampaignStatus = 'draft' | 'scheduled' | 'active' | 'completed' | 'cancelled';
+export type CampaignTaskType = 'report_issues' | 'verify_reports' | 'complete_module' | 'adopt_spot';
+
+export interface CampaignTaskItem {
+  id: number;
+  campaign_id: number;
+  title: string;
+  description?: string;
+  task_type: CampaignTaskType;
+  target_count: number;
+  points_reward: number;
+  display_order: number;
+  user_current_count: number;
+  is_completed: boolean;
+  completed_at?: string;
+}
+
+export interface CampaignListItem {
+  id: number;
+  slug: string;
+  title: string;
+  description: string;
+  season_theme: string;
+  banner_image_url?: string;
+  start_at: string;
+  end_at: string;
+  target_metric: string;
+  target_value: number;
+  current_value: number;
+  progress_percent: number;
+  region: string;
+  status: CampaignStatus;
+  points_reward: number;
+  badge_id?: number;
+  badge_name?: string;
+  badge_icon?: string;
+  participants_count: number;
+  tasks_count: number;
+  is_joined: boolean;
+  is_completed: boolean;
+  user_points_earned: number;
+  created_at: string;
+}
+
+export interface CampaignLeaderboardEntry {
+  rank: number;
+  user_id: number;
+  public_id: string;
+  display_name: string;
+  points_earned: number;
+  tasks_completed_count: number;
+  is_completed: boolean;
+  joined_at: string;
+}
+
+export interface CampaignDetail extends CampaignListItem {
+  tasks: CampaignTaskItem[];
+  top_leaderboard: CampaignLeaderboardEntry[];
+  user_tasks_completed: number;
+  user_total_tasks: number;
+}
+
+export interface CampaignListResponse {
+  total: number;
+  items: CampaignListItem[];
+  stats: {
+    total_campaigns: number;
+    active_campaigns: number;
+    completed_campaigns: number;
+    total_participants: number;
+  };
+}
+
+export interface CampaignSyncSummary {
+  activated_count: number;
+  completed_count: number;
+  details: string[];
+}
+

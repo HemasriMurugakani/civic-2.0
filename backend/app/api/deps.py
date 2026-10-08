@@ -65,12 +65,20 @@ def get_optional_current_user(
     except Exception:
         return None
 
-def require_roles(*roles: UserRole) -> Callable[[User], User]:
+def require_roles(*roles) -> Callable[[User], User]:
+    # Flatten roles if passed as a list or tuple
+    flat_roles = []
+    for r in roles:
+        if isinstance(r, (list, tuple)):
+            flat_roles.extend(r)
+        else:
+            flat_roles.append(r)
+
     def role_checker(current_user: User = Depends(get_current_user)) -> User:
-        if current_user.role not in roles:
+        if current_user.role not in flat_roles:
             raise HTTPException(
                 status_code=status.HTTP_403_FORBIDDEN,
-                detail=f"Access forbidden: requires one of [{', '.join(r.value for r in roles)}], current role is '{current_user.role.value}'",
+                detail=f"Access forbidden: requires one of [{', '.join(r.value for r in flat_roles)}], current role is '{current_user.role.value}'",
             )
         return current_user
     return role_checker

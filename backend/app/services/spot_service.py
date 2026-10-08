@@ -303,14 +303,17 @@ class SpotService:
         self.gamification.evaluate_badges(user.id)
 
         # Send in-app notification
-        notif = Notification(
-            user_id=user.id,
-            event_type="spot_adopted",
-            title=f"Adopted {spot.name}!",
-            message=f"You have committed to caring for '{spot.name}'. You earned +100 Civic Points! Regular check-ins will keep this spot shining.",
-            dedupe_key=f"spot_adopt_{spot.id}_{user.id}_{now.strftime('%Y%m%d%H%M')}"
-        )
-        self.db.add(notif)
+        dedupe_key = f"spot_adopt_{spot.id}_{user.id}_{now.strftime('%Y%m%d%H%M%S')}"
+        existing_notif = self.db.query(Notification).filter(Notification.dedupe_key == dedupe_key).first()
+        if not existing_notif:
+            notif = Notification(
+                user_id=user.id,
+                event_type="spot_adopted",
+                title=f"Adopted {spot.name}!",
+                message=f"You have committed to caring for '{spot.name}'. You earned +100 Civic Points! Regular check-ins will keep this spot shining.",
+                dedupe_key=dedupe_key
+            )
+            self.db.add(notif)
         self.db.commit()
         self.db.refresh(spot)
 
@@ -355,14 +358,17 @@ class SpotService:
 
         # Notify former adopter if released by admin
         if previous_adopter_id and previous_adopter_id != user.id:
-            notif = Notification(
-                user_id=previous_adopter_id,
-                event_type="spot_released",
-                title=f"Adoption ended for {spot.name}",
-                message=f"The adoption for '{spot.name}' has been concluded. Thank you for your service!",
-                dedupe_key=f"spot_release_{spot.id}_{previous_adopter_id}_{now.strftime('%Y%m%d%H%M')}"
-            )
-            self.db.add(notif)
+            dedupe_key = f"spot_release_{spot.id}_{previous_adopter_id}_{now.strftime('%Y%m%d%H%M%S')}"
+            existing_notif = self.db.query(Notification).filter(Notification.dedupe_key == dedupe_key).first()
+            if not existing_notif:
+                notif = Notification(
+                    user_id=previous_adopter_id,
+                    event_type="spot_released",
+                    title=f"Adoption ended for {spot.name}",
+                    message=f"The adoption for '{spot.name}' has been concluded. Thank you for your service!",
+                    dedupe_key=dedupe_key
+                )
+                self.db.add(notif)
 
         self.db.commit()
         self.db.refresh(spot)
@@ -418,14 +424,17 @@ class SpotService:
         self.gamification.evaluate_badges(user.id)
 
         # Send celebratory notification
-        notif = Notification(
-            user_id=user.id,
-            event_type="spot_checkin",
-            title=f"Check-in verified for {spot.name}",
-            message=f"Thank you for maintaining '{spot.name}'! You earned +{points_to_award} Civic Points.",
-            dedupe_key=f"checkin_{spot.id}_{user.id}_{now.strftime('%Y%m%d%H%M')}"
-        )
-        self.db.add(notif)
+        dedupe_key = f"checkin_{spot.id}_{user.id}_{now.strftime('%Y%m%d%H%M%S')}"
+        existing_notif = self.db.query(Notification).filter(Notification.dedupe_key == dedupe_key).first()
+        if not existing_notif:
+            notif = Notification(
+                user_id=user.id,
+                event_type="spot_checkin",
+                title=f"Check-in verified for {spot.name}",
+                message=f"Thank you for maintaining '{spot.name}'! You earned +{points_to_award} Civic Points.",
+                dedupe_key=dedupe_key
+            )
+            self.db.add(notif)
         self.db.commit()
         self.db.refresh(checkin)
 
@@ -497,26 +506,32 @@ class SpotService:
 
                     # Notify former adopter
                     if previous_adopter_id:
-                        notif = Notification(
-                            user_id=previous_adopter_id,
-                            event_type="spot_auto_released",
-                            title=f"Spot released: {spot.name}",
-                            message=f"Due to {spot.max_missed_checkins} missed care check-ins, '{spot.name}' has been made available for other community members to adopt.",
-                            dedupe_key=f"auto_release_{spot.id}_{previous_adopter_id}_{now.strftime('%Y%m%d%H%M')}"
-                        )
-                        self.db.add(notif)
+                        dedupe_key = f"auto_release_{spot.id}_{previous_adopter_id}_{now.strftime('%Y%m%d%H%M%S')}"
+                        existing_notif = self.db.query(Notification).filter(Notification.dedupe_key == dedupe_key).first()
+                        if not existing_notif:
+                            notif = Notification(
+                                user_id=previous_adopter_id,
+                                event_type="spot_auto_released",
+                                title=f"Spot released: {spot.name}",
+                                message=f"Due to {spot.max_missed_checkins} missed care check-ins, '{spot.name}' has been made available for other community members to adopt.",
+                                dedupe_key=dedupe_key
+                            )
+                            self.db.add(notif)
                     auto_released_count += 1
                 else:
                     # Send reminder notification
                     if spot.adopted_by:
-                        notif = Notification(
-                            user_id=spot.adopted_by,
-                            event_type="spot_checkin_reminder",
-                            title=f"Care check-in due: {spot.name}",
-                            message=f"Your care check-in for '{spot.name}' is overdue ({spot.missed_checkins_count}/{spot.max_missed_checkins} missed cycles). Please submit a quick check-in to keep your adoption active!",
-                            dedupe_key=f"remind_{spot.id}_{spot.adopted_by}_{spot.missed_checkins_count}_{now.strftime('%Y%W')}"
-                        )
-                        self.db.add(notif)
+                        dedupe_key = f"remind_{spot.id}_{spot.adopted_by}_{spot.missed_checkins_count}_{now.strftime('%Y%W')}"
+                        existing_notif = self.db.query(Notification).filter(Notification.dedupe_key == dedupe_key).first()
+                        if not existing_notif:
+                            notif = Notification(
+                                user_id=spot.adopted_by,
+                                event_type="spot_checkin_reminder",
+                                title=f"Care check-in due: {spot.name}",
+                                message=f"Your care check-in for '{spot.name}' is overdue ({spot.missed_checkins_count}/{spot.max_missed_checkins} missed cycles). Please submit a quick check-in to keep your adoption active!",
+                                dedupe_key=dedupe_key
+                            )
+                            self.db.add(notif)
                         reminders_sent += 1
 
         self.db.commit()
