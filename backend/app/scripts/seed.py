@@ -19,6 +19,7 @@ from app.models.entities import (
     ComplaintAssignment, ComplaintStatusHistory, ComplaintComment,
     ComplaintEvidence, CitizenFeedback, SLARule, Notification,
     ComplaintStatus, ComplaintPriority, ComplaintChannel, EvidenceType,
+    ComplaintCommunityVote, CommunityVoteType, PlatformVisitor,
     PointsLedger, Badge, UserBadge, BadgeRarity,
     Project, ProjectUpdate, ProjectFollower, ProjectRating, ProjectSyncLog,
     ProjectStatus, ProjectSource,
@@ -216,22 +217,25 @@ def seed_gamification(db: Session):
             db.add(b)
     db.commit()
 
-    # Ensure pseudonyms and seed points for citizens
-    citizens = db.query(User).filter(User.role == UserRole.CITIZEN).all()
+    # Ensure pseudonyms and seed points for signed-in citizens (exclude anonymous)
+    citizens = db.query(User).filter(User.role == UserRole.CITIZEN, User.mobile != "9800000000").all()
     gamification = GamificationService(db)
 
     for idx, c in enumerate(citizens):
         if not c.public_id:
             c.public_id = f"cit-{c.id:04d}"
         if not c.public_display_name:
-            c.public_display_name = f"{c.name.split()[0]} {c.name.split()[-1][0]}."
+            parts = c.name.split()
+            c.public_display_name = f"{parts[0]} {parts[-1][0]}." if len(parts) > 1 else parts[0]
         db.add(c)
 
     db.commit()
 
-    # Seed points from their complaints
+    all_complaints = db.query(Complaint).all()
+
+    # Seed points from their real complaints
     for c in citizens:
-        complaints = db.query(Complaint).filter(Complaint.citizen_id == c.id).all()
+        complaints = [comp for comp in all_complaints if comp.citizen_id == c.id]
         for comp in complaints:
             # report_submitted points
             gamification.award_points(
@@ -251,22 +255,25 @@ def seed_gamification(db: Session):
                     check_daily_cap=False,
                 )
 
-        # Seed realistic verification points (between 2 and 15 verifications)
-        verif_count = random.randint(2, 12)
-        for v_i in range(verif_count):
-            gamification.award_points(
-                user_id=c.id,
-                reason="verified_other_report",
-                source_type="complaint",
-                source_id=f"demo_seed_v_{c.id}_{v_i}",
-                check_daily_cap=False,
-            )
+        # Seed realistic verification points on REAL other complaints (ZERO orphaned source_ids!)
+        other_complaints = [comp for comp in all_complaints if comp.citizen_id != c.id]
+        if other_complaints:
+            verif_count = min(len(other_complaints), random.randint(3, 10))
+            sampled_other = random.sample(other_complaints, verif_count)
+            for other_comp in sampled_other:
+                gamification.award_points(
+                    user_id=c.id,
+                    reason="verified_other_report",
+                    source_type="complaint",
+                    source_id=str(other_comp.id),
+                    check_daily_cap=False,
+                )
 
         # Evaluate badges
         gamification.evaluate_badges(c.id)
 
     db.commit()
-    print("✅ Seeded badges, points, and citizen progress for all citizens.")
+    print("✅ Seeded badges, points, and citizen progress for all citizens with 0 orphaned records.")
 
 
 def seed_projects(db: Session):
@@ -1913,20 +1920,40 @@ def seed_database(reset: bool = False):
 
     dept_by_code = {d.code: d for d in departments}
 
-    # 2. 12 Wards (Chennai City Zones)
+    # 2. 22 Wards (Covering Chennai, Chengalpattu, Thiruvallur, Coimbatore, Madurai, Trichy, Salem, Tirunelveli, Tuticorin, Erode)
     wards_data = [
-        {"ward_number": 51, "name": "Zone 5 - Royapuram", "centroid_lat": 13.1137, "centroid_lng": 80.2954, "population": 88000},
-        {"ward_number": 117, "name": "Zone 10 - T. Nagar", "centroid_lat": 13.0418, "centroid_lng": 80.2341, "population": 94000},
-        {"ward_number": 124, "name": "Zone 9 - Mylapore", "centroid_lat": 13.0339, "centroid_lng": 80.2676, "population": 85000},
-        {"ward_number": 102, "name": "Zone 8 - Anna Nagar", "centroid_lat": 13.0850, "centroid_lng": 80.2101, "population": 98000},
-        {"ward_number": 173, "name": "Zone 13 - Adyar", "centroid_lat": 13.0012, "centroid_lng": 80.2565, "population": 82000},
-        {"ward_number": 178, "name": "Zone 13 - Velachery", "centroid_lat": 12.9815, "centroid_lng": 80.2180, "population": 104000},
-        {"ward_number": 130, "name": "Zone 10 - Kodambakkam", "centroid_lat": 13.0524, "centroid_lng": 80.2227, "population": 91000},
-        {"ward_number": 180, "name": "Zone 13 - Thiruvanmiyur", "centroid_lat": 12.9830, "centroid_lng": 80.2594, "population": 76000},
-        {"ward_number": 122, "name": "Zone 9 - Alwarpet", "centroid_lat": 13.0334, "centroid_lng": 80.2505, "population": 72000},
-        {"ward_number": 110, "name": "Zone 9 - Nungambakkam", "centroid_lat": 13.0604, "centroid_lng": 80.2395, "population": 79000},
-        {"ward_number": 168, "name": "Zone 10 - Guindy", "centroid_lat": 13.0067, "centroid_lng": 80.2025, "population": 92000},
-        {"ward_number": 141, "name": "Zone 10 - Saidapet", "centroid_lat": 13.0213, "centroid_lng": 80.2231, "population": 86000},
+        # Chennai City Zones
+        {"ward_number": 51, "name": "Zone 5 - Royapuram, Chennai", "centroid_lat": 13.1137, "centroid_lng": 80.2954, "population": 88000},
+        {"ward_number": 117, "name": "Zone 10 - T. Nagar, Chennai", "centroid_lat": 13.0418, "centroid_lng": 80.2341, "population": 94000},
+        {"ward_number": 124, "name": "Zone 9 - Mylapore, Chennai", "centroid_lat": 13.0339, "centroid_lng": 80.2676, "population": 85000},
+        {"ward_number": 102, "name": "Zone 8 - Anna Nagar, Chennai", "centroid_lat": 13.0850, "centroid_lng": 80.2101, "population": 98000},
+        {"ward_number": 173, "name": "Zone 13 - Adyar, Chennai", "centroid_lat": 13.0012, "centroid_lng": 80.2565, "population": 82000},
+        {"ward_number": 178, "name": "Zone 13 - Velachery, Chennai", "centroid_lat": 12.9815, "centroid_lng": 80.2180, "population": 104000},
+        {"ward_number": 130, "name": "Zone 10 - Kodambakkam, Chennai", "centroid_lat": 13.0524, "centroid_lng": 80.2227, "population": 91000},
+        {"ward_number": 180, "name": "Zone 13 - Thiruvanmiyur, Chennai", "centroid_lat": 12.9830, "centroid_lng": 80.2594, "population": 76000},
+        {"ward_number": 168, "name": "Zone 10 - Guindy, Chennai", "centroid_lat": 13.0067, "centroid_lng": 80.2025, "population": 92000},
+        {"ward_number": 141, "name": "Zone 10 - Saidapet, Chennai", "centroid_lat": 13.0213, "centroid_lng": 80.2231, "population": 86000},
+        # Chengalpattu
+        {"ward_number": 201, "name": "Ward 15 - Tambaram West, Chengalpattu", "centroid_lat": 12.9249, "centroid_lng": 80.1000, "population": 78000},
+        {"ward_number": 202, "name": "Ward 21 - Chromepet, Chengalpattu", "centroid_lat": 12.9516, "centroid_lng": 80.1462, "population": 82000},
+        # Thiruvallur
+        {"ward_number": 203, "name": "Ward 9 - Avadi Corporation, Thiruvallur", "centroid_lat": 13.1147, "centroid_lng": 80.1098, "population": 75000},
+        # Coimbatore
+        {"ward_number": 204, "name": "Ward 23 - Gandhipuram, Coimbatore", "centroid_lat": 11.0168, "centroid_lng": 76.9558, "population": 95000},
+        {"ward_number": 205, "name": "Ward 45 - RS Puram, Coimbatore", "centroid_lat": 11.0088, "centroid_lng": 76.9482, "population": 88000},
+        # Madurai
+        {"ward_number": 206, "name": "Ward 34 - Simmakkal, Madurai", "centroid_lat": 9.9252, "centroid_lng": 78.1198, "population": 90000},
+        {"ward_number": 207, "name": "Ward 52 - Anna Nagar, Madurai", "centroid_lat": 9.9189, "centroid_lng": 78.1472, "population": 84000},
+        # Tiruchirappalli (Trichy)
+        {"ward_number": 208, "name": "Ward 18 - Thillai Nagar, Trichy", "centroid_lat": 10.8282, "centroid_lng": 78.6868, "population": 80000},
+        # Salem
+        {"ward_number": 209, "name": "Ward 12 - Hastampatti, Salem", "centroid_lat": 11.6643, "centroid_lng": 78.1460, "population": 76000},
+        # Tirunelveli
+        {"ward_number": 210, "name": "Ward 16 - Palayamkottai, Tirunelveli", "centroid_lat": 8.7139, "centroid_lng": 77.7567, "population": 72000},
+        # Tuticorin / Thoothukudi
+        {"ward_number": 211, "name": "Ward 8 - Pearl City Center, Tuticorin", "centroid_lat": 8.7642, "centroid_lng": 78.1348, "population": 68000},
+        # Erode
+        {"ward_number": 212, "name": "Ward 27 - Perundurai Road, Erode", "centroid_lat": 11.3410, "centroid_lng": 77.7172, "population": 71000},
     ]
 
     wards = []
@@ -2000,7 +2027,7 @@ def seed_database(reset: bool = False):
     print("👥 Seeding Users across all 4 roles...")
     password_hash = get_password_hash("Civic@123")
 
-    # Gov Admin
+    # 1. Gov Admin
     gov_admin = User(
         name="Thiru M. K. Stalin (Admin Secretariat)",
         mobile="9800000001",
@@ -2012,7 +2039,7 @@ def seed_database(reset: bool = False):
     )
     db.add(gov_admin)
 
-    # 5 Department Admins
+    # 2. 5 Department Admins
     dept_admins = {}
     dept_admin_data = [
         ("SAN", "Dr. K. Radhakrishnan IAS", "9800000010", "admin.sanitation@tngov.in"),
@@ -2036,150 +2063,236 @@ def seed_database(reset: bool = False):
         dept_admins[code] = admin_user
     db.commit()
 
-    # 15 Officers (3 per department across different wards)
-    officers = []
-    officer_names = [
-        # Sanitation
-        ("SAN", "Murugan K.", "9810000011", "officer.san1@tngov.in", 0),
-        ("SAN", "Priya Venkatesh", "9810000012", "officer.san2@tngov.in", 1),
-        ("SAN", "Selvam R.", "9810000013", "officer.san3@tngov.in", 2),
-        # Water
-        ("WAT", "Karthik Subramanian", "9810000021", "officer.wat1@tngov.in", 3),
-        ("WAT", "Deepa Mohan", "9810000022", "officer.wat2@tngov.in", 4),
-        ("WAT", "Narayanan T.", "9810000023", "officer.wat3@tngov.in", 5),
-        # Roads
-        ("ROA", "Balamurugan S.", "9810000031", "officer.roa1@tngov.in", 6),
-        ("ROA", "Anitha Rajendran", "9810000032", "officer.roa2@tngov.in", 7),
-        ("ROA", "Vijayakumar P.", "9810000033", "officer.roa3@tngov.in", 8),
-        # Electricity
-        ("ELE", "Suresh Kumar E.", "9810000041", "officer.ele1@tngov.in", 9),
-        ("ELE", "Lakshmi Narayanan", "9810000042", "officer.ele2@tngov.in", 10),
-        ("ELE", "Gopinath M.", "9810000043", "officer.ele3@tngov.in", 11),
-        # Public Health
-        ("PUB", "Dr. Aravind Swamy", "9810000051", "officer.pub1@tngov.in", 0),
-        ("PUB", "Dr. Jayanthi Raman", "9810000052", "officer.pub2@tngov.in", 1),
-        ("PUB", "Saravanan D.", "9810000053", "officer.pub3@tngov.in", 5),
-    ]
-
-    for code, name, mobile, email, ward_idx in officer_names:
-        off = User(
-            name=name,
-            mobile=mobile,
-            email=email,
-            hashed_password=password_hash,
-            role=UserRole.OFFICER,
-            department_id=dept_by_code[code].id,
-            ward_id=wards[ward_idx].id,
-            preferred_language="ta" if ward_idx % 2 == 0 else "en",
-            is_active=True,
-        )
-        db.add(off)
-        officers.append(off)
+    # 3. 1 Dedicated Anonymous Reporter Citizen User
+    anon_user = User(
+        name="Anonymous Citizen",
+        mobile="9800000000",
+        email="anonymous@nammatn.in",
+        hashed_password=password_hash,
+        role=UserRole.CITIZEN,
+        public_display_name="Anonymous Citizen",
+        public_id="cit-anon",
+        preferred_language="ta",
+        is_active=True,
+    )
+    db.add(anon_user)
     db.commit()
-    for o in officers:
+
+    # 4. Strictly-Scoped Officers (1 per department and ward = 110 officers, ZERO cross-dept or cross-ward assignments)
+    officers_map = {}  # (dept_id, ward_id) -> officer User
+    officers_list = []
+
+    # Demo officers mapping for predefined logins
+    demo_officers = {
+        ("SAN", 51): ("Murugan K.", "9810000011", "officer.san1@tngov.in"),
+        ("WAT", 102): ("Karthik Subramanian", "9810000021", "officer.wat1@tngov.in"),
+        ("ROA", 130): ("Balamurugan S.", "9810000031", "officer.roa1@tngov.in"),
+        ("ELE", 117): ("Suresh Kumar E.", "9810000041", "officer.ele1@tngov.in"),
+        ("PUB", 51): ("Dr. Aravind Swamy", "9810000051", "officer.pub1@tngov.in"),
+    }
+
+    tamil_officer_firsts = ["Selvam", "Priya", "Narayanan", "Deepa", "Vijayakumar", "Anitha", "Gopinath", "Lakshmi", "Saravanan", "Jayanthi", "Manikandan", "Geetha", "Sridhar", "Kaviyarasan", "Sudha", "Rajesh", "Karthika", "Balaji", "Nithya", "Vignesh"]
+    tamil_officer_lasts = ["R.", "Venkatesh", "T.", "Mohan", "P.", "Rajendran", "M.", "Narayanan", "D.", "Raman", "C.", "Balan", "Natarajan", "Murugan", "Ramesh", "Kumar", "Sundaram", "Swamy", "Devi", "Kannan"]
+
+    off_idx = 0
+    for d_idx, dept in enumerate(departments):
+        for w_idx, ward in enumerate(wards):
+            key = (dept.code, ward.ward_number)
+            if key in demo_officers:
+                o_name, o_mobile, o_email = demo_officers[key]
+            else:
+                f_name = tamil_officer_firsts[off_idx % len(tamil_officer_firsts)]
+                l_name = tamil_officer_lasts[(off_idx // len(tamil_officer_firsts)) % len(tamil_officer_lasts)]
+                o_name = f"{f_name} {l_name}"
+                o_mobile = f"9815{off_idx:06d}"
+                o_email = f"officer.{dept.code.lower()}_{ward.ward_number}@tngov.in"
+                off_idx += 1
+
+            off = User(
+                name=o_name,
+                mobile=o_mobile,
+                email=o_email,
+                hashed_password=password_hash,
+                role=UserRole.OFFICER,
+                department_id=dept.id,
+                ward_id=ward.id,
+                preferred_language="ta" if w_idx % 2 == 0 else "en",
+                is_active=True,
+            )
+            db.add(off)
+            officers_list.append(off)
+            officers_map[(dept.id, ward.id)] = off
+
+    db.commit()
+    for o in officers_list:
         db.refresh(o)
 
-    officers_by_dept = {}
-    for o in officers:
-        officers_by_dept.setdefault(o.department_id, []).append(o)
-
-    # 20 Citizens
+    # 5. 20 Named Citizens
     citizens = []
-    citizen_first_names = ["Kavitha", "Senthil", "Meena", "Ramesh", "Dhanush", "Bhavani", "Arun", "Vani", "Mani", "Revathi", "Sathish", "Padma", "Gowtham", "Shanthi", "Prabhu", "Vidya", "Kishore", "Malathi", "Sundar", "Yamuna"]
-    citizen_last_names = ["Sundaram", "Nathan", "Ramasamy", "Iyer", "Kannan", "Balaji", "Chandran", "Sekar", "Murugesan", "Velu"]
-    for i in range(20):
-        c_name = f"{citizen_first_names[i]} {citizen_last_names[i % len(citizen_last_names)]}"
-        c_mobile = f"98400000{i+1:02d}"
-        c_email = f"citizen{i+1}@tngov.in"
+    citizen_data = [
+        ("Kavitha Sundaram", "9840000001", "citizen1@tngov.in", 51, "ta"),
+        ("Senthil Nathan", "9840000002", "citizen2@tngov.in", 117, "en"),
+        ("Meena Ramasamy", "9840000003", "citizen3@tngov.in", 102, "ta"),
+        ("Ramesh Iyer", "9840000004", "citizen4@tngov.in", 130, "en"),
+        ("Dhanush Kannan", "9840000005", "citizen5@tngov.in", 173, "ta"),
+        ("Bhavani Balaji", "9840000006", "citizen6@tngov.in", 204, "ta"),
+        ("Arun Chandran", "9840000007", "citizen7@tngov.in", 206, "en"),
+        ("Vani Sekar", "9840000008", "citizen8@tngov.in", 208, "ta"),
+        ("Mani Murugesan", "9840000009", "citizen9@tngov.in", 209, "ta"),
+        ("Revathi Velu", "9840000010", "citizen10@tngov.in", 210, "ta"),
+        ("Sathish Kumar", "9840000011", "citizen11@tngov.in", 211, "en"),
+        ("Padma Priya", "9840000012", "citizen12@tngov.in", 212, "ta"),
+        ("Gowtham Raj", "9840000013", "citizen13@tngov.in", 201, "en"),
+        ("Shanthi Narayanan", "9840000014", "citizen14@tngov.in", 203, "ta"),
+        ("Prabhu Devan", "9840000015", "citizen15@tngov.in", 178, "en"),
+        ("Vidya Subramanian", "9840000016", "citizen16@tngov.in", 124, "ta"),
+        ("Kishore Anand", "9840000017", "citizen17@tngov.in", 141, "en"),
+        ("Malathi Krishnan", "9840000018", "citizen18@tngov.in", 205, "ta"),
+        ("Sundar Rajan", "9840000019", "citizen19@tngov.in", 207, "en"),
+        ("Yamuna Devi", "9840000020", "citizen20@tngov.in", 202, "ta"),
+    ]
+
+    ward_by_num = {w.ward_number: w for w in wards}
+
+    for c_name, c_mobile, c_email, w_num, lang in citizen_data:
+        w_obj = ward_by_num.get(w_num, wards[0])
         citizen = User(
             name=c_name,
             mobile=c_mobile,
             email=c_email,
             hashed_password=password_hash,
             role=UserRole.CITIZEN,
-            ward_id=wards[i % len(wards)].id,
-            preferred_language="ta" if i % 2 == 0 else "en",
+            ward_id=w_obj.id,
+            preferred_language=lang,
             is_active=True,
         )
         db.add(citizen)
         citizens.append(citizen)
+
     db.commit()
     for c in citizens:
         db.refresh(c)
 
-    print("📊 Generating ~3000 realistic complaints over the past 6 months...")
+    print("📊 Generating 3,000 realistic complaints over the past 6 months...")
     now = datetime.utcnow()
-    six_months_ago = now - timedelta(days=180)
 
-    # Hotspot ward weights (Royapuram, Kodambakkam, Velachery have significantly higher load)
-    # Ward numbers: 51 (Royapuram), 130 (Kodambakkam), 178 (Velachery)
+    # Hotspot ward weights (Royapuram, Kodambakkam, Anna Nagar, Gandhipuram Coimbatore, Simmakkal Madurai have higher civic activity)
     ward_weights = []
     for w in wards:
         if w.ward_number in [51, 130]:
-            ward_weights.append(25)  # Heavy hotspot
-        elif w.ward_number in [178, 141]:
-            ward_weights.append(15)  # Moderate hotspot
+            ward_weights.append(18)  # Primary hotspots
+        elif w.ward_number in [102, 117, 178, 204, 206]:
+            ward_weights.append(10)  # Secondary hotspots
+        elif w.ward_number in [141, 173, 201, 208, 209]:
+            ward_weights.append(6)   # Moderate activity
         else:
-            ward_weights.append(6)
+            ward_weights.append(3)   # Standard activity
 
-    # Status distribution:
-    # 45% Citizen Verified, 20% Resolved, 15% InProgress, 10% Acknowledged, 6% Assigned, 4% Reopened/Submitted
+    # Status distribution
     status_choices = [
         ComplaintStatus.CITIZEN_VERIFIED,
         ComplaintStatus.RESOLVED,
         ComplaintStatus.IN_PROGRESS,
         ComplaintStatus.ACKNOWLEDGED,
         ComplaintStatus.ASSIGNED,
-        ComplaintStatus.REOPENED,
         ComplaintStatus.SUBMITTED,
     ]
-    status_weights = [42, 22, 16, 9, 5, 4, 2]
+    status_weights = [42, 22, 16, 9, 6, 5]
 
-    # Pre-defined complaint templates
+    # Authentic bilingual complaints repository
     templates = {
         "SAN_GARBAGE": [
-            ("Severe garbage accumulation near market corner", "Large dump of vegetable waste and unsegregated plastic bags overflowing onto the roadway for 4 days. Foul smell and stray cows."),
-            ("Garbage not picked up from residential street", "Compactor bin has been overflowing since Friday. Domestic trash scattered across street."),
-            ("Waste dumped in empty vacant plot", "Unauthorized dumping of commercial waste in open plot causing severe hygiene and mosquito issues."),
+            {
+                "en": ("Severe garbage accumulation near market corner", "Large dump of vegetable waste and unsegregated plastic bags overflowing onto the roadway for 4 days. Foul smell and stray cows."),
+                "ta": ("சந்தை பகுதியில் பெருமளவு குப்பை தேக்கம்", "காய்கறி கழிவுகள் மற்றும் பிளாஸ்டிக் பைகள் சாலையில் 4 நாட்களாக தேங்கி கிடக்கின்றன. கடுமையான துர்நாற்றம் வீசுகிறது."),
+            },
+            {
+                "en": ("Garbage not picked up from residential street", "Compactor bin has been overflowing since Friday. Domestic trash scattered across street."),
+                "ta": ("குடியிருப்பு பகுதியில் குப்பை அள்ளப்படவில்லை", "குப்பைத் தொட்டி நிரம்பி வழிந்து தெருவெங்கும் குப்பைகள் சிதறிக் கிடக்கின்றன. உடனடியாக அகற்ற வேண்டும்."),
+            },
+            {
+                "en": ("Waste dumped in empty vacant plot", "Unauthorized dumping of commercial waste in open plot causing severe hygiene and mosquito issues."),
+                "ta": ("காலி மனையில் கழிவுகள் கொட்டப்படுதல்", "காலி நிலத்தில் கழிவுகள் கொட்டப்படுவதால் கொசுக்கள் மற்றும் சுகாதார சீர்கேடு ஏற்பட்டுள்ளது."),
+            },
         ],
         "WAT_SEWAGE_OVERFLOW": [
-            ("Underground sewer overflow on main bus route", "Drainage water bubbling out from manhole cover onto road surface. Commuters unable to walk."),
-            ("Sewage backflow into residential storm drain", "Drainage mixing with open stormwater canal, creating stagnant black water and foul stench."),
-            ("Blocked sewer pipe causing waterlogging in lane", "Sewage line choked near house doorsteps. Immediate suction lorry required."),
+            {
+                "en": ("Underground sewer overflow on main bus route", "Drainage water bubbling out from manhole cover onto road surface. Commuters unable to walk."),
+                "ta": ("பேருந்து பாதையில் பாதாள சாக்கடை கழிவுநீர் பெருக்கெடுத்தல்", "மேன்ஹோலில் இருந்து கழிவுநீர் சாலையில் வழிகிறது. பாதசாரிகள் நடக்க முடியாத அவல நிலை ஏற்பட்டுள்ளது."),
+            },
+            {
+                "en": ("Sewage backflow into residential storm drain", "Drainage mixing with open stormwater canal, creating stagnant black water and foul stench."),
+                "ta": ("மழைநீர் வடிகாலில் கழிவுநீர் கலத்தல்", "சாக்கடை நீர் மழைநீர் வடிகாலில் கலந்து கடுமையான துர்நாற்றம் வீசுகிறது."),
+            },
         ],
         "WAT_CONTAMINATED": [
-            ("Yellowish muddy drinking water in tap", "Municipal tap water has strong sewage odor and yellowish turbidity. High risk of waterborne infection."),
-            ("Severe pipeline contamination after road digging", "Drinking water smells of chlorine and oil after gas pipeline trench was dug."),
+            {
+                "en": ("Yellowish muddy drinking water in tap", "Municipal tap water has strong sewage odor and yellowish turbidity. High risk of waterborne infection."),
+                "ta": ("குடிநீரில் சாக்கடை நீர் கலந்து கலங்கலாக வருதல்", "குடிநீர் குழாயில் துர்நாற்றத்துடன் மஞ்சள் நிற நீர் வருகிறது. குடிநீர் மூலம் பரவும் நோய் அபாயம் உள்ளது."),
+            },
+            {
+                "en": ("Severe pipeline contamination after road digging", "Drinking water smells of chlorine and oil after gas pipeline trench was dug."),
+                "ta": ("சாலை தோண்டிய பின் குடிநீரில் மாசு கலத்தல்", "சாலை பணிகளுக்குப் பிறகு குடிநீரில் எண்ணெய் வாசனை மற்றும் கழிவுநீர் கலக்கிறது."),
+            },
         ],
         "ROA_POTHOLE": [
-            ("Dangerous deep pothole on flyover descent", "Deep crater on middle lane near descent. Multiple two-wheelers slipping, urgent cold mix patch needed."),
-            ("Series of deep trenches left open after fiber cable work", "Cable contractors dug across entire street and left loose gravel without blacktopping."),
-            ("Multiple potholes near school bus stop", "Water filled potholes after rain, school children getting splashed and falling."),
+            {
+                "en": ("Dangerous deep pothole on flyover descent", "Deep crater on middle lane near descent. Multiple two-wheelers slipping, urgent cold mix patch needed."),
+                "ta": ("மேம்பாலத்தில் ஆபத்தான ஆழமான சாலை குழி", "இறங்கு பாதையில் நடுப்பகுதியில் பெரிய குழி உள்ளது. இருசக்கர வாகனங்கள் சறுக்கி விபத்து ஏற்படுகிறது."),
+            },
+            {
+                "en": ("Series of deep trenches left open after fiber cable work", "Cable contractors dug across entire street and left loose gravel without blacktopping."),
+                "ta": ("கேபிள் பணிகளுக்குப் பின் மூடப்படாத பள்ளங்கள்", "தெரு முழுவதும் தோண்டப்பட்டு தார் போடாமல் விடப்பட்டுள்ளது. வாகனங்கள் செல்ல சிரமமாக உள்ளது."),
+            },
+            {
+                "en": ("Multiple potholes near school bus stop", "Water filled potholes after rain, school children getting splashed and falling."),
+                "ta": ("பள்ளி பேருந்து நிறுத்தம் அருகே மழைநீர் தேங்கிய குழிகள்", "மழை பெய்ததால் குழிகளில் தண்ணீர் தேங்கி பள்ளி குழந்தைகள் கீழே விழுகின்றனர்."),
+            },
         ],
         "ROA_WATERLOGGING": [
-            ("Knee-deep water stagnation after 1 hour rain", "Water stagnation in subway underpass due to non-functioning motor pump."),
-            ("Stormwater drain clogged with plastic debris", "Rainwater unable to enter drain inlets due to plastic accumulation."),
+            {
+                "en": ("Knee-deep water stagnation after 1 hour rain", "Water stagnation in subway underpass due to non-functioning motor pump."),
+                "ta": ("சுரங்கப்பாதையில் மழைநீர் தேங்கி போக்குவரத்து பாதிப்பு", "மோட்டார் பம்ப் இயங்காததால் சுரங்கப்பாதையில் முழங்கால் அளவு தண்ணீர் தேங்கி நிற்கிறது."),
+            },
+            {
+                "en": ("Stormwater drain clogged with plastic debris", "Rainwater unable to enter drain inlets due to plastic accumulation."),
+                "ta": ("மழைநீர் வடிகால் அடைப்பு - தண்ணீர் தேக்கம்", "பிளாஸ்டிக் குப்பைகளால் மழைநீர் வடியாமல் தெருவில் வெள்ளம் போல் தேங்குகிறது."),
+            },
         ],
         "ELE_STREETLIGHT_OUT": [
-            ("5 consecutive streetlights not glowing on 2nd Main Road", "Entire stretch in pitch darkness for past 3 days. Women and elderly feel unsafe walking."),
-            ("Flickering LED lamp on corner pole", "Light turns off every 30 seconds with buzzing sound from transformer junction."),
+            {
+                "en": ("5 consecutive streetlights not glowing on Main Road", "Entire stretch in pitch darkness for past 3 days. Women and elderly feel unsafe walking."),
+                "ta": ("முக்கிய சாலையில் 5 தெருவிளக்குகள் எரியவில்லை", "கடந்த 3 நாட்களாக இருளில் மூழ்கியுள்ளது. பெண்கள் மற்றும் முதியவர்கள் செல்ல அச்சப்படுகின்றனர்."),
+            },
+            {
+                "en": ("Flickering LED lamp on corner pole", "Light turns off every 30 seconds with buzzing sound from transformer junction."),
+                "ta": ("தெரு முனை மின்விளக்கு விட்டு விட்டு எரிகிறது", "ஒலி எழுப்பியவாறு விளக்கு அணைந்து எரிகிறது. உடனடியாக பழுதுபார்க்க வேண்டும்."),
+            },
         ],
         "ELE_DANGLING_WIRE": [
-            ("Low-hanging overhead electric cable touching tree branches", "High voltage wire sagging below 8 feet from road level. Sparking during windy hours."),
-            ("Exposed pillar box wire after vehicle collision", "Metal junction box door broken and live copper wires exposed near bus shelter."),
+            {
+                "en": ("Low-hanging overhead electric cable touching tree branches", "High voltage wire sagging below 8 feet from road level. Sparking during windy hours."),
+                "ta": ("தாழ்வாக தொங்கும் உயர் அழுத்த மின்கம்பிகள்", "மின்கம்பிகள் மரக்கிளைகளில் உரசி தீப்பொறி பறக்கிறது. உயிருக்கு ஆபத்து ஏற்படும் முன் சரிசெய்யவும்."),
+            },
+            {
+                "en": ("Exposed pillar box wire after vehicle collision", "Metal junction box door broken and live copper wires exposed near bus shelter."),
+                "ta": ("திறந்த நிலையில் உள்ள மின் இணைப்பு பெட்டி", "பேருந்து நிறுத்தம் அருகே மின்பெட்டி கதவு உடைந்து கம்பிகள் வெளியே தெரிகின்றன."),
+            },
         ],
         "PUB_MOSQUITO_FOG": [
-            ("Severe mosquito density near canal bank", "Heavy swarm of mosquitoes entering apartments by 6 PM. Fogging not conducted for 3 weeks."),
-            ("Stagnant water in construction basement breeding mosquitoes", "Water collected in abandoned construction pit requires abate chemical treatment."),
+            {
+                "en": ("Severe mosquito density near canal bank", "Heavy swarm of mosquitoes entering apartments by 6 PM. Fogging not conducted for 3 weeks."),
+                "ta": ("கால்வாய் ஓரம் தீவிர கொசு பெருக்கம்", "கொசு மருந்து தெளிக்கப்படாததால் மாலை வேளையில் வீடுகளுக்குள் அதிகளவில் கொசுக்கள் வருகின்றன."),
+            },
+            {
+                "en": ("Stagnant water in construction basement breeding mosquitoes", "Water collected in abandoned construction pit requires abate chemical treatment."),
+                "ta": ("கட்டுமான இடத்தில் தேங்கியுள்ள நீரால் கொசு உற்பத்தி", "கட்டட பேஸ்மெண்ட்டில் தண்ணீர் தேங்கி கொசுப்புழுக்கள் உற்பத்தியாகின்றன."),
+            },
         ],
     }
 
+    dept_by_id = {d.id: d for d in departments}
     complaints_batch = []
-    assignments_batch = []
-    histories_batch = []
-    feedbacks_batch = []
-    evidences_batch = []
-
     total_target = 3000
     ref_counter = 1
 
@@ -2190,120 +2303,139 @@ def seed_database(reset: bool = False):
         ward = random.choices(wards, weights=ward_weights, k=1)[0]
         # Pick category
         category = random.choice(categories)
+        dept_obj = dept_by_id[category.department_id]
 
-        # Template or default
+        # Strictly scoped officer matching BOTH category department AND ward
+        officer = officers_map[(category.department_id, ward.id)]
+
+        # Determine reporter: 12% Anonymous Citizen, 88% Signed-in Citizen
+        is_anon = (random.random() < 0.12)
+        if is_anon:
+            reporter = anon_user
+            use_ta = random.random() < 0.5
+        else:
+            reporter = random.choice(citizens)
+            use_ta = (reporter.preferred_language == "ta")
+
+        # Bilingual Title and Description
         cat_code = category.code
         if cat_code in templates:
-            t_title, t_desc = random.choice(templates[cat_code])
+            tmpl_pair = random.choice(templates[cat_code])
+            t_title, t_desc = tmpl_pair["ta"] if use_ta else tmpl_pair["en"]
         else:
-            t_title = f"{category.name_en} reported in {ward.name}"
-            t_desc = f"Citizen reported severe issue regarding {category.name_en}. Urgent intervention requested from the concerned authorities."
+            if use_ta:
+                t_title = f"{category.name_ta} - {ward.name}"
+                t_desc = f"{ward.name} பகுதியில் {category.name_ta} பற்றிய பொதுப் பிரச்சினை. உடனடி நடவடிக்கை தேவை."
+            else:
+                t_title = f"{category.name_en} reported in {ward.name}"
+                t_desc = f"Citizen reported severe issue regarding {category.name_en} in {ward.name}. Urgent intervention requested."
 
         # Random timestamp in past 180 days (clustered slightly more towards recent)
         days_ago = int(random.triangular(0, 180, 45))
         hours_ago = random.randint(0, 23)
-        created_at = now - timedelta(days=days_ago, hours=hours_ago)
+        created_at = now - timedelta(days=days_ago, hours=hours_ago, minutes=random.randint(0, 59))
 
         sla_hours = category.sla_hours or 48
         sla_deadline = created_at + timedelta(hours=sla_hours)
 
         # Determine status
-        # If very recent (< 2 days), skew towards open states
         if days_ago <= 2:
-            status = random.choice([ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED, ComplaintStatus.ACKNOWLEDGED, ComplaintStatus.IN_PROGRESS])
+            status = random.choice([
+                ComplaintStatus.SUBMITTED,
+                ComplaintStatus.ASSIGNED,
+                ComplaintStatus.ACKNOWLEDGED,
+                ComplaintStatus.IN_PROGRESS
+            ])
         else:
             status = random.choices(status_choices, weights=status_weights, k=1)[0]
 
-        # Determine priority: 70% default, 30% varied
-        if random.random() < 0.7:
-            priority = category.default_priority
-        else:
-            priority = random.choice(list(ComplaintPriority))
+        # Determine priority: 75% default, 25% varied
+        priority = category.default_priority if random.random() < 0.75 else random.choice(list(ComplaintPriority))
 
-        # Check SLA breach
+        # Calculate strictly sequential timestamps and SLA compliance
         resolved_at = None
         verified_at = None
         escalation_level = 0
 
         if status in [ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]:
-            # Some resolved within SLA, ~15% resolved after SLA deadline
+            # 85% resolved within SLA, 15% breached
             if random.random() < 0.85:
-                res_duration = timedelta(hours=random.uniform(4, sla_hours * 0.9))
+                res_duration = timedelta(hours=random.uniform(2.0, max(sla_hours * 0.85, 3.0)))
             else:
-                res_duration = timedelta(hours=random.uniform(sla_hours * 1.05, sla_hours * 2.2))
+                res_duration = timedelta(hours=random.uniform(sla_hours * 1.1, sla_hours * 2.2))
                 escalation_level = 1
-            resolved_at = min(created_at + res_duration, now)
+
+            resolved_at = min(created_at + res_duration, now - timedelta(minutes=15))
+            if resolved_at <= created_at:
+                resolved_at = created_at + timedelta(hours=3)
+
             if status == ComplaintStatus.CITIZEN_VERIFIED:
-                verified_at = min(resolved_at + timedelta(hours=random.randint(2, 48)), now)
+                verified_at = min(resolved_at + timedelta(hours=random.uniform(1.0, 24.0)), now)
         else:
-            # For open complaints, check if now > sla_deadline
             if now > sla_deadline:
                 escalation_level = 2 if now > (sla_deadline + timedelta(hours=24)) else 1
 
-        # Jitter coordinates around ward centroid
+        # Coordinate jitter around ward centroid
         lat = ward.centroid_lat + random.uniform(-0.008, 0.008)
         lng = ward.centroid_lng + random.uniform(-0.008, 0.008)
 
-        citizen = random.choice(citizens)
-        ref_no = f"GOV-2026-{ref_counter:06d}"
+        ref_no = f"TN-2026-{ref_counter:06d}"
         ref_counter += 1
 
         complaint = Complaint(
             reference_no=ref_no,
-            citizen_id=citizen.id,
+            citizen_id=reporter.id,
             category_id=category.id,
             ward_id=ward.id,
             title=t_title,
             description=t_desc,
             latitude=lat,
             longitude=lng,
-            address_text=f"Door No {random.randint(1, 150)}, Cross Street, {ward.name}, Chennai - 6000{random.randint(10, 99)}",
-            channel=random.choice(list(ComplaintChannel)),
+            address_text=f"No. {random.randint(1, 150)}, Cross Street, {ward.name}",
+            channel=ComplaintChannel.WEB if is_anon else random.choice(list(ComplaintChannel)),
             status=status,
             final_priority=priority,
             sla_deadline=sla_deadline,
             escalation_level=escalation_level,
             created_at=created_at,
-            updated_at=resolved_at or created_at,
+            updated_at=verified_at or resolved_at or created_at,
             resolved_at=resolved_at,
             verified_at=verified_at,
         )
         db.add(complaint)
 
-        # Store in batch for relationship creation
-        complaints_batch.append((complaint, category.department_id, ward.id, status, created_at, resolved_at, citizen.id))
+        complaints_batch.append((complaint, category.department_id, ward.id, status, created_at, resolved_at, verified_at, reporter.id, officer))
 
         if len(complaints_batch) % 500 == 0:
             db.commit()
             print(f"  Flushed {len(complaints_batch)} / {total_target} complaints...")
 
     db.commit()
-    print("Complaints saved. Creating assignments, status histories, evidence, and feedback...")
+    print("Complaints saved. Creating assignments, status histories, evidence, feedback, and community votes...")
 
-    # Now create assignments, histories, feedback
-    for complaint, dept_id, ward_id, status, created_at, resolved_at, citizen_id in complaints_batch:
-        dept_officers = officers_by_dept.get(dept_id, officers)
-        officer = random.choice(dept_officers)
+    # Now create assignments, histories, feedback, and votes
+    for idx_comp, (complaint, dept_id, ward_id, status, created_at, resolved_at, verified_at, reporter_id, officer) in enumerate(complaints_batch):
+        dept_code = dept_by_id[dept_id].code
+        dept_admin_user = dept_admins[dept_code]
 
-        # 1. Assignment
+        # 1. Assignment (Zero cross-dept or cross-ward assignments)
         if status != ComplaintStatus.SUBMITTED:
             assign = ComplaintAssignment(
                 complaint_id=complaint.id,
                 officer_id=officer.id,
-                assigned_by_id=dept_admins.get(list(dept_by_code.keys())[0], None).id if dept_admins else None,
+                assigned_by_id=dept_admin_user.id,
                 assigned_at=created_at + timedelta(minutes=15),
                 is_active=True,
             )
             db.add(assign)
 
-        # 2. Status History Chain
-        # Always had SUBMITTED
+        # 2. Status History Chain with Strictly Sequential Timestamps
         h1 = ComplaintStatusHistory(
             complaint_id=complaint.id,
             from_status=None,
             to_status=ComplaintStatus.SUBMITTED.value,
-            actor_id=citizen_id,
-            note="Grievance logged via portal",
+            actor_id=reporter_id,
+            note="Grievance registered in portal",
             timestamp=created_at,
         )
         db.add(h1)
@@ -2313,8 +2445,8 @@ def seed_database(reset: bool = False):
                 complaint_id=complaint.id,
                 from_status=ComplaintStatus.SUBMITTED.value,
                 to_status=ComplaintStatus.ASSIGNED.value,
-                actor_id=None,
-                note=f"Assigned to {officer.name}",
+                actor_id=dept_admin_user.id,
+                note=f"Assigned to field officer {officer.name}",
                 timestamp=created_at + timedelta(minutes=15),
             )
             db.add(h2)
@@ -2325,7 +2457,7 @@ def seed_database(reset: bool = False):
                 from_status=ComplaintStatus.ASSIGNED.value,
                 to_status=ComplaintStatus.ACKNOWLEDGED.value,
                 actor_id=officer.id,
-                note="Inspected site and mobilized work team",
+                note="Site inspection scheduled with field crew",
                 timestamp=created_at + timedelta(hours=1),
             )
             db.add(h3)
@@ -2336,7 +2468,7 @@ def seed_database(reset: bool = False):
                 from_status=ComplaintStatus.ACKNOWLEDGED.value,
                 to_status=ComplaintStatus.IN_PROGRESS.value,
                 actor_id=officer.id,
-                note="Field crew actively executing repair work",
+                note="Field crew actively executing rectification work",
                 timestamp=created_at + timedelta(hours=3),
             )
             db.add(h4)
@@ -2352,36 +2484,36 @@ def seed_database(reset: bool = False):
             )
             db.add(h5)
 
-        if status == ComplaintStatus.CITIZEN_VERIFIED:
+        if verified_at and status == ComplaintStatus.CITIZEN_VERIFIED:
             h6 = ComplaintStatusHistory(
                 complaint_id=complaint.id,
                 from_status=ComplaintStatus.RESOLVED.value,
                 to_status=ComplaintStatus.CITIZEN_VERIFIED.value,
-                actor_id=citizen_id,
+                actor_id=reporter_id,
                 note="Citizen verified the rectification on site",
-                timestamp=complaint.verified_at or (resolved_at + timedelta(hours=4)),
+                timestamp=verified_at,
             )
             db.add(h6)
 
         # 3. Citizen Feedback for resolved / verified complaints
         if status in [ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]:
-            rating = random.choices([5, 4, 3, 2, 1], weights=[45, 35, 12, 5, 3], k=1)[0]
+            rating = random.choices([5, 4, 3, 2, 1], weights=[45, 38, 11, 4, 2], k=1)[0]
             feedback = CitizenFeedback(
                 complaint_id=complaint.id,
-                citizen_id=citizen_id,
+                citizen_id=reporter_id,
                 rating=rating,
-                comment=f"Rating {rating}/5. {'Prompt action by field staff, thank you!' if rating >= 4 else 'Took longer than promised but issue solved.'}",
+                comment=f"Rating {rating}/5. {'Prompt action by field staff, thank you!' if rating >= 4 else 'Issue resolved.'}",
                 confirmed_resolved=(status == ComplaintStatus.CITIZEN_VERIFIED),
-                created_at=complaint.verified_at or resolved_at,
+                created_at=verified_at or resolved_at,
             )
             db.add(feedback)
 
-        # 4. Attach evidence images to some complaints
+        # 4. Attach evidence images
         if random.random() < 0.25:
             sample_img = random.choice(sample_images)
             ev = ComplaintEvidence(
                 complaint_id=complaint.id,
-                uploader_id=citizen_id,
+                uploader_id=reporter_id,
                 evidence_type=EvidenceType.CITIZEN,
                 file_path=sample_img,
                 file_name=sample_img,
@@ -2404,8 +2536,55 @@ def seed_database(reset: bool = False):
                 )
                 db.add(ev_after)
 
+        # 5. Persistent Community Votes on complaints (Strictly unique per user and complaint)
+        other_voters = [c for c in citizens if c.id != reporter_id]
+        if status in [ComplaintStatus.IN_PROGRESS, ComplaintStatus.ACKNOWLEDGED, ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED]:
+            conf_count = random.randint(3, 6)
+        elif status == ComplaintStatus.ASSIGNED:
+            conf_count = random.randint(1, 2)
+        else:
+            conf_count = random.choices([0, 1, 2], weights=[70, 20, 10], k=1)[0]
+
+        chosen = []
+        if conf_count > 0 and other_voters:
+            chosen = random.sample(other_voters, min(conf_count, len(other_voters)))
+            for v in chosen:
+                vote_time = min(created_at + timedelta(minutes=random.randint(10, 180)), now)
+                db.add(ComplaintCommunityVote(
+                    complaint_id=complaint.id,
+                    user_id=v.id,
+                    vote_type=CommunityVoteType.CONFIRM,
+                    created_at=vote_time,
+                ))
+
+        remaining_voters = [c for c in other_voters if c not in chosen]
+        if random.random() < 0.02 and remaining_voters:
+            disp_voter = random.choice(remaining_voters)
+            db.add(ComplaintCommunityVote(
+                complaint_id=complaint.id,
+                user_id=disp_voter.id,
+                vote_type=CommunityVoteType.DISPUTE,
+                created_at=min(created_at + timedelta(hours=random.randint(1, 12)), now),
+            ))
+
+        if (idx_comp + 1) % 500 == 0:
+            db.commit()
+            print(f"  Flushed attachments, history & votes for {idx_comp + 1} / {len(complaints_batch)} complaints...")
+
     db.commit()
-    print("✅ Successfully seeded 3000 realistic complaints!")
+    print("✅ Successfully seeded 3,000 realistic complaints and community confirmations!")
+
+    # 6. Seed Platform Visitors
+    print("🌐 Seeding Platform Visitors...")
+    for vi in range(150):
+        v_time = now - timedelta(days=random.randint(0, 30), hours=random.randint(0, 23))
+        db.add(PlatformVisitor(
+            session_id=f"sess_init_{vi:04d}",
+            user_agent="Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+            last_seen_at=v_time,
+            created_at=v_time,
+        ))
+    db.commit()
 
     # 5. Seed Gamification: Badges & Initial Points (Milestone F1)
     seed_gamification(db)
