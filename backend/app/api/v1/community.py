@@ -114,7 +114,7 @@ def create_group_post(
         "id": p.id,
         "group_id": p.group_id,
         "author_id": p.author_id,
-        "author_name": current_user.name,
+        "author_name": current_user.public_display_name or current_user.name,
         "author_role": current_user.role.value,
         "title": p.title,
         "content": p.content,

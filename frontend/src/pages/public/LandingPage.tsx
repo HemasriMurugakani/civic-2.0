@@ -136,11 +136,16 @@ export const LandingPage: React.FC = () => {
   const navigate = useNavigate();
 
   const [stats, setStats] = useState<PublicStats>({
-    total_complaints: 70,
-    resolved_complaints: 1,
-    pending_complaints: 69,
-    avg_resolution_days: 1.2,
-    resolution_rate_pct: 1.0,
+    total_complaints: 0,
+    resolved_complaints: 0,
+    pending_complaints: 0,
+    avg_resolution_days: 0,
+    resolution_rate_pct: 0,
+    visitor_count: 1415,
+    unverified_count: 0,
+    community_verified_count: 0,
+    fix_reported_count: 0,
+    citizen_verified_count: 0,
   });
 
   const [showMoreCategories, setShowMoreCategories] = useState(false);
@@ -159,15 +164,24 @@ export const LandingPage: React.FC = () => {
   const [selectedModule, setSelectedModule] = useState<string | null>(null);
 
   useEffect(() => {
+    // Record visitor session idempotently
+    const sessionId = localStorage.getItem('civic_session_id') || Math.random().toString(36).substring(2, 15);
+    localStorage.setItem('civic_session_id', sessionId);
+    api.recordPlatformVisit(sessionId).catch(() => {});
+
     api.getPublicStats()
       .then((data) => {
-        // Keep stats aligned with screenshot or DB live values
         setStats({
-          total_complaints: data.total_complaints || 70,
-          resolved_complaints: data.resolved_complaints || 1,
-          pending_complaints: data.pending_complaints || 69,
-          avg_resolution_days: data.avg_resolution_days || 1.2,
-          resolution_rate_pct: data.resolution_rate_pct || 1.0,
+          total_complaints: data.total_complaints ?? 0,
+          resolved_complaints: data.resolved_complaints ?? 0,
+          pending_complaints: data.pending_complaints ?? 0,
+          avg_resolution_days: data.avg_resolution_days ?? 0,
+          resolution_rate_pct: data.resolution_rate_pct ?? 0,
+          visitor_count: data.visitor_count,
+          unverified_count: data.unverified_count ?? 0,
+          community_verified_count: data.community_verified_count ?? 0,
+          fix_reported_count: data.fix_reported_count ?? 0,
+          citizen_verified_count: data.citizen_verified_count ?? 0,
         });
       })
       .catch(() => { });
@@ -316,8 +330,8 @@ export const LandingPage: React.FC = () => {
                 <span className="text-emerald-600 dark:text-emerald-400">🔒</span>
                 <span>
                   No account needed to explore ·{' '}
-                  <strong className="text-stone-700 dark:text-stone-300">70</strong> reported ·{' '}
-                  <strong className="text-stone-700 dark:text-stone-300">1</strong> resolved
+                  <strong className="text-stone-700 dark:text-stone-300">{stats.total_complaints.toLocaleString()}</strong> reported ·{' '}
+                  <strong className="text-stone-700 dark:text-stone-300">{stats.resolved_complaints.toLocaleString()}</strong> resolved
                 </span>
               </div>
             </div>
@@ -361,7 +375,7 @@ export const LandingPage: React.FC = () => {
               </div>
               <div className="text-xs font-semibold text-stone-500">Reported</div>
               <div className="text-3xl font-extrabold text-stone-900 dark:text-white mt-0.5 font-mono">
-                70
+                {stats.total_complaints.toLocaleString()}
               </div>
               <div className="mt-3 w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
                 <div className="bg-blue-600 h-full w-full rounded-full" />
@@ -374,14 +388,19 @@ export const LandingPage: React.FC = () => {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-teal-50 text-teal-600 dark:bg-teal-950/60 dark:text-teal-400">
                   <UserCheck className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-stone-400 font-medium">19% of reported</span>
+                <span className="text-xs text-stone-400 font-medium">
+                  {stats.total_complaints > 0 ? Math.round(((stats.community_verified_count ?? 0) / stats.total_complaints) * 100) : 0}% of reported
+                </span>
               </div>
               <div className="text-xs font-semibold text-stone-500">Community-verified</div>
               <div className="text-3xl font-extrabold text-stone-900 dark:text-white mt-0.5 font-mono">
-                13
+                {(stats.community_verified_count ?? 0).toLocaleString()}
               </div>
               <div className="mt-3 w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-teal-600 h-full w-[19%] rounded-full" />
+                <div
+                  className="bg-teal-600 h-full rounded-full"
+                  style={{ width: `${stats.total_complaints > 0 ? Math.round(((stats.community_verified_count ?? 0) / stats.total_complaints) * 100) : 0}%` }}
+                />
               </div>
             </div>
 
@@ -391,14 +410,19 @@ export const LandingPage: React.FC = () => {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-amber-50 text-amber-600 dark:bg-amber-950/60 dark:text-amber-400">
                   <ArrowRight className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-stone-400 font-medium">4% of reported</span>
+                <span className="text-xs text-stone-400 font-medium">
+                  {stats.total_complaints > 0 ? Math.round(((stats.fix_reported_count ?? 0) / stats.total_complaints) * 100) : 0}% of reported
+                </span>
               </div>
               <div className="text-xs font-semibold text-stone-500">Fix reported</div>
               <div className="text-3xl font-extrabold text-stone-900 dark:text-white mt-0.5 font-mono">
-                3
+                {(stats.fix_reported_count ?? 0).toLocaleString()}
               </div>
               <div className="mt-3 w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-amber-500 h-full w-[4%] rounded-full" />
+                <div
+                  className="bg-amber-500 h-full rounded-full"
+                  style={{ width: `${stats.total_complaints > 0 ? Math.round(((stats.fix_reported_count ?? 0) / stats.total_complaints) * 100) : 0}%` }}
+                />
               </div>
             </div>
 
@@ -408,14 +432,19 @@ export const LandingPage: React.FC = () => {
                 <div className="flex h-9 w-9 items-center justify-center rounded-xl bg-emerald-50 text-emerald-600 dark:bg-emerald-950/60 dark:text-emerald-400">
                   <CheckCircle2 className="h-4 w-4" />
                 </div>
-                <span className="text-xs text-stone-400 font-medium">1% of reported</span>
+                <span className="text-xs text-stone-400 font-medium">
+                  {stats.total_complaints > 0 ? Math.round(((stats.citizen_verified_count ?? stats.resolved_complaints) / stats.total_complaints) * 100) : 0}% of reported
+                </span>
               </div>
               <div className="text-xs font-semibold text-stone-500">Resolved & verified</div>
               <div className="text-3xl font-extrabold text-stone-900 dark:text-white mt-0.5 font-mono">
-                1
+                {(stats.citizen_verified_count ?? stats.resolved_complaints).toLocaleString()}
               </div>
               <div className="mt-3 w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
-                <div className="bg-emerald-600 h-full w-[1%] rounded-full" />
+                <div
+                  className="bg-emerald-600 h-full rounded-full"
+                  style={{ width: `${stats.total_complaints > 0 ? Math.round(((stats.citizen_verified_count ?? stats.resolved_complaints) / stats.total_complaints) * 100) : 0}%` }}
+                />
               </div>
             </div>
           </div>
@@ -973,7 +1002,7 @@ export const LandingPage: React.FC = () => {
 
               {/* Subtitle */}
               <p className="text-xs sm:text-sm text-stone-200/90 leading-relaxed">
-                Join the <strong className="text-amber-300 font-bold">1,415</strong> citizens exploring NammaTN — report, verify and hold Tamil Nadu&apos;s government accountable.
+                Join the <strong className="text-amber-300 font-bold">{(stats.visitor_count ?? 1415).toLocaleString()}</strong> citizens exploring NammaTN — report, verify and hold Tamil Nadu&apos;s government accountable.
               </p>
 
               {/* Action Buttons */}
@@ -1136,7 +1165,7 @@ export const LandingPage: React.FC = () => {
             <div className="flex items-center gap-2">
               <Eye className="h-3.5 w-3.5 text-[#800000]" />
               <span>
-                <strong className="text-stone-800 dark:text-stone-200 font-bold">1,415</strong> visitors · Built for civic transparency · Open data
+                <strong className="text-stone-800 dark:text-stone-200 font-bold">{(stats.visitor_count ?? 1415).toLocaleString()}</strong> visitors · Built for civic transparency · Open data
               </span>
             </div>
 

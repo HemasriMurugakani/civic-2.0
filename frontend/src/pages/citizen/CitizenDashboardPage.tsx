@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { PlusCircle, Search, Clock, CheckCircle2, AlertCircle, ArrowRight } from 'lucide-react';
@@ -38,6 +38,14 @@ export const CitizenDashboardPage: React.FC = () => {
   const resolvedComplaints = complaints.filter(
     (c) => c.status === 'resolved' || c.status === 'citizen_verified'
   );
+
+  const slaProtectedPct = useMemo(() => {
+    if (complaints.length === 0) return 100;
+    const compliantCount = complaints.filter(
+      (c) => c.sla_status !== 'breached'
+    ).length;
+    return Math.round((compliantCount / complaints.length) * 100);
+  }, [complaints]);
 
   return (
     <div className="space-y-8 font-sans">
@@ -83,7 +91,7 @@ export const CitizenDashboardPage: React.FC = () => {
         </div>
         <div className="rounded-2xl border border-stone-200/80 dark:border-stone-800 bg-white dark:bg-stone-900 p-4 shadow-2xs">
           <span className="text-[11px] font-semibold text-stone-400 uppercase tracking-wider">SLA Protected</span>
-          <p className="text-2xl font-bold text-[#800000] dark:text-rose-400 mt-1">100%</p>
+          <p className="text-2xl font-bold text-[#800000] dark:text-rose-400 mt-1">{slaProtectedPct}%</p>
         </div>
       </div>
 

@@ -13,6 +13,7 @@ from app.services.complaint_service import ComplaintService
 from app.services.sla_service import SLAService
 from app.services.storage import default_storage
 from app.services.ai_gateway import ai_provider
+from app.services.masking_service import MaskingService
 from app.schemas.complaint import (
     ComplaintCreate, ComplaintListItem, ComplaintDetailResponse,
     ComplaintStatusUpdate, ComplaintAssignRequest, ComplaintReopenRequest,
@@ -40,14 +41,27 @@ def _build_list_item(complaint, current_user: User) -> ComplaintListItem:
             assigned_officer_name = a.officer.name if a.officer else None
             break
 
-    # Mask citizen phone for privacy if viewer is officer
-    masked_mobile = _mask_mobile(complaint.citizen.mobile) if complaint.citizen else None
+    # Role-based privacy masking
+    is_own = (current_user.id == complaint.citizen_id)
+    is_anon = bool(complaint.citizen and complaint.citizen.mobile == "9800000000")
+    citizen_display = MaskingService.mask_name_by_role(
+        complaint.citizen,
+        viewer_role=current_user.role,
+        is_anonymous=is_anon,
+        is_own_record=is_own
+    )
+    masked_mobile = MaskingService.mask_mobile_by_role(
+        complaint.citizen.mobile if complaint.citizen else None,
+        viewer_role=current_user.role,
+        is_anonymous=is_anon,
+        is_own_record=is_own
+    )
 
     return ComplaintListItem(
         id=complaint.id,
         reference_no=complaint.reference_no,
         citizen_id=complaint.citizen_id,
-        citizen_name=complaint.citizen.name if complaint.citizen else "Citizen",
+        citizen_name=citizen_display,
         citizen_mobile_masked=masked_mobile,
         category_id=complaint.category_id,
         category_name_en=complaint.category.name_en if complaint.category else "",

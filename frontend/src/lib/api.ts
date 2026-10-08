@@ -78,6 +78,15 @@ export const api = {
   // Public
   getPublicStats: () => request<PublicStats>('/public/stats'),
 
+  recordPlatformVisit: (sessionId?: string) =>
+    request<{ success: boolean; visitor_count: number }>('/public/visitors/record', {
+      method: 'POST',
+      body: JSON.stringify(sessionId ? { session_id: sessionId } : {}),
+    }),
+
+  getPlatformVisitors: () =>
+    request<{ visitor_count: number }>('/public/visitors'),
+
   getPublicMasterData: () =>
     request<{ departments: Department[]; wards: Ward[]; categories: Category[] }>('/public/master-data'),
 

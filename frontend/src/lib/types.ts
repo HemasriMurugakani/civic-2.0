@@ -174,6 +174,11 @@ export interface PublicStats {
   pending_complaints: number;
   avg_resolution_days: number;
   resolution_rate_pct: number;
+  visitor_count?: number;
+  unverified_count?: number;
+  community_verified_count?: number;
+  fix_reported_count?: number;
+  citizen_verified_count?: number;
 }
 
 export interface NotificationItem {

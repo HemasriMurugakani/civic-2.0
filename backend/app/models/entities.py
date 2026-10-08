@@ -41,6 +41,11 @@ class EvidenceType(str, enum.Enum):
     AFTER = "after"
 
 
+class CommunityVoteType(str, enum.Enum):
+    CONFIRM = "confirm"
+    DISPUTE = "dispute"
+
+
 class BadgeRarity(str, enum.Enum):
     COMMON = "common"
     RARE = "rare"
@@ -194,6 +199,7 @@ class Complaint(Base):
     evidence = relationship("ComplaintEvidence", back_populates="complaint", cascade="all, delete-orphan")
     feedback = relationship("CitizenFeedback", back_populates="complaint", uselist=False, cascade="all, delete-orphan")
     ai_predictions = relationship("AIPrediction", back_populates="complaint", cascade="all, delete-orphan")
+    community_votes = relationship("ComplaintCommunityVote", back_populates="complaint", cascade="all, delete-orphan")
 
 
 class ComplaintAssignment(Base):
@@ -270,6 +276,35 @@ class CitizenFeedback(Base):
 
     complaint = relationship("Complaint", back_populates="feedback")
     citizen = relationship("User")
+
+
+class ComplaintCommunityVote(Base):
+    __tablename__ = "complaint_community_votes"
+
+    id = Column(Integer, primary_key=True, index=True)
+    complaint_id = Column(Integer, ForeignKey("complaints.id", ondelete="CASCADE"), nullable=False, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    vote_type = Column(SQLEnum(CommunityVoteType), nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+
+    __table_args__ = (
+        UniqueConstraint("complaint_id", "user_id", name="uq_complaint_community_vote_user"),
+        Index("idx_vote_complaint_type", "complaint_id", "vote_type"),
+    )
+
+    complaint = relationship("Complaint", back_populates="community_votes")
+    user = relationship("User")
+
+
+class PlatformVisitor(Base):
+    __tablename__ = "platform_visitors"
+
+    id = Column(Integer, primary_key=True, index=True)
+    session_id = Column(String(100), unique=True, nullable=False, index=True)
+    ip_hash = Column(String(64), nullable=True)
+    user_agent = Column(String(255), nullable=True)
+    last_seen_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class SLARule(Base):

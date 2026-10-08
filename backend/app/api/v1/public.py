@@ -7,11 +7,14 @@ from sqlalchemy import func
 from app.api.deps import get_db, get_optional_current_user
 from app.models.entities import (
     Complaint, ComplaintStatus, Department, Ward, ComplaintCategory,
-    ComplaintPriority, User, UserRole, ComplaintChannel
+    ComplaintPriority, User, UserRole, ComplaintChannel,
+    ComplaintCommunityVote, CommunityVoteType
 )
 from app.repositories.complaint_repo import ComplaintRepository
 from app.repositories.master_repo import MasterRepository
 from app.services.sla_service import SLAService
+from app.services.metrics_service import MetricsService
+from app.services.masking_service import MaskingService
 from app.schemas.complaint import PublicTrackResponse, StatusHistoryItem
 
 router = APIRouter(prefix="/public", tags=["Public"])
@@ -61,30 +64,9 @@ def track_complaint(reference_no: str, db: Session = Depends(get_db)):
 
 @router.get("/stats")
 def get_public_stats(db: Session = Depends(get_db)):
-    total = db.query(func.count(Complaint.id)).scalar() or 0
-    resolved = db.query(func.count(Complaint.id)).filter(
-        Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED])
-    ).scalar() or 0
-
-    # Calculate average resolution days
-    resolved_rows = db.query(Complaint.created_at, Complaint.resolved_at).filter(
-        Complaint.resolved_at.isnot(None),
-        Complaint.status.in_([ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED])
-    ).limit(500).all()
-
-    if resolved_rows:
-        durations = [(r.resolved_at - r.created_at).total_seconds() / 86400.0 for r in resolved_rows]
-        avg_days = round(sum(durations) / len(durations), 1)
-    else:
-        avg_days = 2.4
-
-    return {
-        "total_complaints": total,
-        "resolved_complaints": resolved,
-        "pending_complaints": max(total - resolved, 0),
-        "avg_resolution_days": avg_days,
-        "resolution_rate_pct": round((resolved / total * 100), 1) if total else 0.0,
-    }
+    """Single source of truth for public headline statistics."""
+    service = MetricsService(db)
+    return service.get_public_stats()
 
 @router.get("/master-data")
 def get_public_master_data(db: Session = Depends(get_db)):
@@ -124,10 +106,6 @@ def get_public_master_data(db: Session = Depends(get_db)):
     }
 
 
-# In-memory community verification registry (id -> {"confirmations": int, "disputes": int})
-_COMMUNITY_VOTES: Dict[int, Dict[str, int]] = {}
-
-
 @router.get("/issues")
 def list_public_issues(
     category_code: Optional[str] = None,
@@ -141,118 +119,22 @@ def list_public_issues(
     offset: int = 0,
     db: Session = Depends(get_db)
 ):
-    query = db.query(Complaint)
-
-    if category_id:
-        query = query.filter(Complaint.category_id == category_id)
-    elif category_code and category_code.lower() != 'all':
-        cat_match = db.query(ComplaintCategory).filter(
-            func.lower(ComplaintCategory.code).like(f"%{category_code.lower()}%")
-        ).all()
-        if cat_match:
-            query = query.filter(Complaint.category_id.in_([c.id for c in cat_match]))
-
-    if ward_id:
-        query = query.filter(Complaint.ward_id == ward_id)
-
-    if district and district.lower() != 'all':
-        query = query.join(Ward).filter(func.lower(Ward.name).like(f"%{district.lower()}%"))
-
-    if severity and severity.lower() != 'all':
-        try:
-            p_enum = ComplaintPriority(severity.lower())
-            query = query.filter(Complaint.final_priority == p_enum)
-        except Exception:
-            pass
-
-    if status and status.lower() != 'all':
-        if status.lower() == 'unverified':
-            query = query.filter(Complaint.status.in_([ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED]))
-        elif status.lower() == 'verified':
-            query = query.filter(Complaint.status == ComplaintStatus.IN_PROGRESS)
-        elif status.lower() == 'fix_reported':
-            query = query.filter(Complaint.status == ComplaintStatus.RESOLVED)
-        elif status.lower() == 'resolved':
-            query = query.filter(Complaint.status == ComplaintStatus.CITIZEN_VERIFIED)
-        elif status.lower() == 'disputed':
-            query = query.filter(Complaint.status == ComplaintStatus.REOPENED)
-
-    if search:
-        query = query.filter(
-            Complaint.title.ilike(f"%{search}%") | Complaint.description.ilike(f"%{search}%") | Complaint.reference_no.ilike(f"%{search}%")
-        )
-
-    total = query.count()
-    rows = query.order_by(Complaint.created_at.desc()).offset(offset).limit(limit).all()
-
-    # Calculate status totals
-    total_all = db.query(func.count(Complaint.id)).scalar() or 0
-    resolved_count = db.query(func.count(Complaint.id)).filter(Complaint.status == ComplaintStatus.CITIZEN_VERIFIED).scalar() or 0
-    fix_reported_count = db.query(func.count(Complaint.id)).filter(Complaint.status == ComplaintStatus.RESOLVED).scalar() or 0
-    verified_count = db.query(func.count(Complaint.id)).filter(Complaint.status.in_([ComplaintStatus.IN_PROGRESS, ComplaintStatus.ACKNOWLEDGED])).scalar() or 0
-    unverified_count = max(total_all - resolved_count - fix_reported_count - verified_count, 0)
-
-    # Hotspots summary
-    hotspots = [
-        {"name": "Chennai", "count": 16, "rank": 1},
-        {"name": "Chengalpattu", "count": 8, "rank": 2},
-        {"name": "Thiruvallur", "count": 5, "rank": 3},
-        {"name": "Coimbatore", "count": 4, "rank": 4},
-        {"name": "Tuticorin", "count": 4, "rank": 5},
-        {"name": "Madurai", "count": 4, "rank": 6},
-    ]
-
-    now = datetime.utcnow()
-
-    def _format_time_ago(dt: datetime) -> str:
-        diff = now - dt
-        if diff.days > 0:
-            return f"{diff.days}d ago"
-        hrs = int(diff.total_seconds() / 3600)
-        if hrs > 0:
-            return f"{hrs}h ago"
-        return f"{max(int(diff.total_seconds() / 60), 1)}m ago"
-
-    results = []
-    for c in rows:
-        vote = _COMMUNITY_VOTES.get(c.id, {"confirmations": 0, "disputes": 0})
-        is_unverified = c.status in [ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED]
-        status_label = "Unverified" if is_unverified else "Verified" if c.status in [ComplaintStatus.IN_PROGRESS, ComplaintStatus.ACKNOWLEDGED] else "Fix reported" if c.status == ComplaintStatus.RESOLVED else "Resolved"
-
-        results.append({
-            "id": c.id,
-            "reference_no": c.reference_no,
-            "title": c.title,
-            "description": c.description,
-            "status": c.status.value,
-            "status_label": status_label,
-            "is_unverified": is_unverified,
-            "severity": c.final_priority.value if c.final_priority else "medium",
-            "category_name": c.category.name_en if c.category else "General",
-            "department_name": c.category.department.name_en if (c.category and c.category.department) else "Local Administration",
-            "ward_name": c.ward.name if c.ward else "Ward 51",
-            "district": c.ward.name.split(",")[-1].strip() if (c.ward and "," in c.ward.name) else "Chennai",
-            "created_at": c.created_at.isoformat(),
-            "time_ago": _format_time_ago(c.created_at),
-            "confirmations": vote["confirmations"],
-            "disputes": vote["disputes"],
-            "confirmations_needed": 3,
-            "latitude": c.latitude or 13.0827,
-            "longitude": c.longitude or 80.2707,
-        })
-
-    return {
-        "total": total,
-        "total_all": total_all,
-        "unverified_count": unverified_count,
-        "verified_count": verified_count,
-        "fix_reported_count": fix_reported_count,
-        "resolved_count": resolved_count,
-        "disputed_count": 0,
-        "resolution_rate_pct": round((resolved_count / total_all * 100), 1) if total_all else 1.0,
-        "hotspots": hotspots,
-        "issues": results,
-    }
+    """
+    Public community issues board.
+    Single source of truth via MetricsService.
+    """
+    service = MetricsService(db)
+    return service.get_public_issues_summary(
+        category_code=category_code,
+        category_id=category_id,
+        ward_id=ward_id,
+        district=district,
+        severity=severity,
+        status=status,
+        search=search,
+        limit=limit,
+        offset=offset,
+    )
 
 
 @router.get("/issues/{issue_id}")
@@ -269,10 +151,35 @@ def get_public_issue_detail(issue_id: str, db: Session = Depends(get_db)):
     if not complaint:
         raise HTTPException(status_code=404, detail="Issue not found")
 
-    vote = _COMMUNITY_VOTES.get(complaint.id, {"confirmations": 0, "disputes": 0})
-    is_unverified = complaint.status in [ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED]
+    # Real persistent votes
+    conf_count = (
+        db.query(func.count(ComplaintCommunityVote.id))
+        .filter(
+            ComplaintCommunityVote.complaint_id == complaint.id,
+            ComplaintCommunityVote.vote_type == CommunityVoteType.CONFIRM,
+        )
+        .scalar()
+        or 0
+    )
+    disp_count = (
+        db.query(func.count(ComplaintCommunityVote.id))
+        .filter(
+            ComplaintCommunityVote.complaint_id == complaint.id,
+            ComplaintCommunityVote.vote_type == CommunityVoteType.DISPUTE,
+        )
+        .scalar()
+        or 0
+    )
 
-    district_name = complaint.ward.name.split(",")[-1].strip() if (complaint.ward and "," in complaint.ward.name) else "Ranipet"
+    is_unverified = complaint.status in [ComplaintStatus.SUBMITTED, ComplaintStatus.ASSIGNED] and conf_count < 3
+    district_name = complaint.ward.name.split(",")[-1].strip() if (complaint.ward and "," in complaint.ward.name) else "Chennai"
+
+    # Privacy-preserving reporter pseudonym
+    reporter_display = MaskingService.mask_name_by_role(
+        complaint.citizen,
+        viewer_role=None,
+        is_anonymous=(complaint.citizen.mobile == "9800000000" if complaint.citizen else False)
+    )
 
     return {
         "id": complaint.id,
@@ -283,14 +190,14 @@ def get_public_issue_detail(issue_id: str, db: Session = Depends(get_db)):
         "status_label": "Unverified" if is_unverified else "Verified",
         "severity": complaint.final_priority.value if complaint.final_priority else "low",
         "created_at": complaint.created_at.strftime("%d/%m/%Y, %H:%M:%S"),
-        "reporter_name": "a citizen",
+        "reporter_name": reporter_display,
         "category_name": complaint.category.name_en if complaint.category else "Water Bodies",
         "department_name": complaint.category.department.name_en if (complaint.category and complaint.category.department) else "Public Works Department",
-        "ward_name": complaint.ward.name if complaint.ward else "Nemili Taluk",
+        "ward_name": complaint.ward.name if complaint.ward else "Ward 51",
         "district": district_name,
-        "confirmations": vote["confirmations"],
-        "disputes": vote["disputes"],
-        "confirmations_needed": 3,
+        "confirmations": conf_count,
+        "disputes": disp_count,
+        "confirmations_needed": max(3 - conf_count, 0),
         "has_fixed": complaint.status in [ComplaintStatus.RESOLVED, ComplaintStatus.CITIZEN_VERIFIED],
         "authority": {
             "department": complaint.category.department.name_en if (complaint.category and complaint.category.department) else "Public Works Department",
@@ -327,28 +234,82 @@ def verify_public_issue(
     c_id = int(issue_id) if issue_id.isdigit() else 1
     action = payload.get("action", "confirm")
 
-    if c_id not in _COMMUNITY_VOTES:
-        _COMMUNITY_VOTES[c_id] = {"confirmations": 0, "disputes": 0}
+    complaint = db.query(Complaint).filter(Complaint.id == c_id).first()
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Issue not found")
+
+    # Resolve voting user (logged-in user or anonymous system citizen)
+    voter = current_user
+    if not voter:
+        voter = db.query(User).filter(User.mobile == "9800000000").first()
+        if not voter:
+            from app.core.security import get_password_hash
+            voter = User(
+                name="Anonymous Citizen",
+                mobile="9800000000",
+                email="anonymous@nammatn.in",
+                hashed_password=get_password_hash("Civic@123"),
+                role=UserRole.CITIZEN,
+                preferred_language="en",
+                is_active=True
+            )
+            db.add(voter)
+            db.commit()
+            db.refresh(voter)
 
     points_earned = 0
+
     if action == "confirm":
-        _COMMUNITY_VOTES[c_id]["confirmations"] += 1
-        if current_user:
-            complaint = db.query(Complaint).filter(Complaint.id == c_id).first()
-            author_id = complaint.citizen_id if complaint else None
+        # Check existing vote
+        existing_vote = db.query(ComplaintCommunityVote).filter(
+            ComplaintCommunityVote.complaint_id == c_id,
+            ComplaintCommunityVote.user_id == voter.id,
+        ).first()
+        if not existing_vote:
+            vote = ComplaintCommunityVote(
+                complaint_id=c_id,
+                user_id=voter.id,
+                vote_type=CommunityVoteType.CONFIRM,
+            )
+            db.add(vote)
+            db.commit()
+
+        # Award gamification points if user is logged in
+        if current_user and current_user.id != complaint.citizen_id:
             from app.services.gamification_service import GamificationService
             res = GamificationService(db).record_event(
                 user_id=current_user.id,
                 event_type="verified_other_report",
                 source_type="complaint",
                 source_id=str(c_id),
-                self_check_author_id=author_id,
+                self_check_author_id=complaint.citizen_id,
             )
             points_earned = res.get("points", 0)
+
     elif action == "dispute":
-        _COMMUNITY_VOTES[c_id]["disputes"] += 1
+        existing_vote = db.query(ComplaintCommunityVote).filter(
+            ComplaintCommunityVote.complaint_id == c_id,
+            ComplaintCommunityVote.user_id == voter.id,
+        ).first()
+        if existing_vote:
+            existing_vote.vote_type = CommunityVoteType.DISPUTE
+        else:
+            vote = ComplaintCommunityVote(
+                complaint_id=c_id,
+                user_id=voter.id,
+                vote_type=CommunityVoteType.DISPUTE,
+            )
+            db.add(vote)
+        db.commit()
+
     elif action == "undo_confirm":
-        _COMMUNITY_VOTES[c_id]["confirmations"] = max(_COMMUNITY_VOTES[c_id]["confirmations"] - 1, 0)
+        existing_vote = db.query(ComplaintCommunityVote).filter(
+            ComplaintCommunityVote.complaint_id == c_id,
+            ComplaintCommunityVote.user_id == voter.id,
+        ).first()
+        if existing_vote:
+            db.delete(existing_vote)
+            db.commit()
         if current_user:
             from app.services.gamification_service import GamificationService
             GamificationService(db).reverse_points(
@@ -358,13 +319,53 @@ def verify_public_issue(
                 source_id=str(c_id),
             )
 
+    # Compute updated counts from database
+    conf_count = (
+        db.query(func.count(ComplaintCommunityVote.id))
+        .filter(
+            ComplaintCommunityVote.complaint_id == c_id,
+            ComplaintCommunityVote.vote_type == CommunityVoteType.CONFIRM,
+        )
+        .scalar()
+        or 0
+    )
+    disp_count = (
+        db.query(func.count(ComplaintCommunityVote.id))
+        .filter(
+            ComplaintCommunityVote.complaint_id == c_id,
+            ComplaintCommunityVote.vote_type == CommunityVoteType.DISPUTE,
+        )
+        .scalar()
+        or 0
+    )
+
     return {
         "success": True,
-        "confirmations": _COMMUNITY_VOTES[c_id]["confirmations"],
-        "disputes": _COMMUNITY_VOTES[c_id]["disputes"],
-        "confirmations_needed": max(3 - _COMMUNITY_VOTES[c_id]["confirmations"], 0),
+        "confirmations": conf_count,
+        "disputes": disp_count,
+        "confirmations_needed": max(3 - conf_count, 0),
         "points_earned": points_earned,
     }
+
+
+@router.post("/visitors/record")
+def record_platform_visit(
+    payload: Dict[str, Any] = Body(...),
+    db: Session = Depends(get_db),
+):
+    """Records a unique platform visit in the database."""
+    session_id = payload.get("session_id", "anon_session")
+    user_agent = payload.get("user_agent")
+    service = MetricsService(db)
+    count = service.record_visitor(session_id=session_id, user_agent=user_agent)
+    return {"success": True, "visitor_count": count}
+
+
+@router.get("/visitors")
+def get_platform_visitors(db: Session = Depends(get_db)):
+    """Returns dynamic platform visitor count from database."""
+    service = MetricsService(db)
+    return {"visitor_count": service.get_visitor_count()}
 
 
 @router.post("/issues")

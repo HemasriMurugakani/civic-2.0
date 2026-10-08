@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
   Home, Megaphone, MapPin, Compass, Landmark, Flag,
@@ -8,6 +8,7 @@ import {
 } from 'lucide-react';
 import { NammaLogo } from '../common/NammaLogo';
 import { useAuth } from '@/lib/auth';
+import { api } from '@/lib/api';
 
 interface NammaSidebarProps {
   onExploreModuleClick?: (moduleName: string) => void;
@@ -27,6 +28,15 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
   const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+  const [visitorCount, setVisitorCount] = useState<number>(1415);
+
+  useEffect(() => {
+    api.getPublicStats()
+      .then((data) => {
+        if (data.visitor_count) setVisitorCount(data.visitor_count);
+      })
+      .catch(() => {});
+  }, []);
 
   const isCurrent = (path: string) =>
     location.pathname === path || (path !== '/' && location.pathname.startsWith(path));
@@ -218,7 +228,7 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
             Share feedback
           </button>
           <div className="flex items-center justify-center gap-1.5">
-            <span>👁️ 1,415 visitors</span>
+            <span>👁️ {visitorCount.toLocaleString()} visitors</span>
             <span>·</span>
             <button
               type="button"

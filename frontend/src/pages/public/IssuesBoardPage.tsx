@@ -39,15 +39,16 @@ export const IssuesBoardPage: React.FC = () => {
   const [issues, setIssues] = useState<IssueItem[]>([]);
   const [loading, setLoading] = useState<boolean>(true);
   const [stats, setStats] = useState<any>({
-    total: 70,
-    unverified_count: 57,
-    verified_count: 10,
-    fix_reported_count: 2,
-    resolved_count: 1,
+    total: 0,
+    unverified_count: 0,
+    verified_count: 0,
+    fix_reported_count: 0,
+    resolved_count: 0,
     disputed_count: 0,
-    resolution_rate_pct: 1.0,
+    resolution_rate_pct: 0,
   });
 
+  const [hotspots, setHotspots] = useState<any[]>([]);
   const [activeCategory, setActiveCategory] = useState<string>('all');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [selectedDistrict, setSelectedDistrict] = useState<string>('All districts');
@@ -69,16 +70,19 @@ export const IssuesBoardPage: React.FC = () => {
 
       setIssues(res.issues || []);
       setStats({
-        total: res.total || 70,
-        unverified_count: res.unverified_count ?? 57,
-        verified_count: res.verified_count ?? 10,
-        fix_reported_count: res.fix_reported_count ?? 2,
-        resolved_count: res.resolved_count ?? 1,
+        total: res.total ?? 0,
+        unverified_count: res.unverified_count ?? 0,
+        verified_count: res.verified_count ?? 0,
+        fix_reported_count: res.fix_reported_count ?? 0,
+        resolved_count: res.resolved_count ?? 0,
         disputed_count: res.disputed_count ?? 0,
-        resolution_rate_pct: res.resolution_rate_pct ?? 1.0,
+        resolution_rate_pct: res.resolution_rate_pct ?? 0,
       });
+      if (res.hotspots && Array.isArray(res.hotspots)) {
+        setHotspots(res.hotspots);
+      }
     } catch {
-      // Fallback sample data if backend connection is slow
+      // API error handler
     } finally {
       setLoading(false);
     }
@@ -92,15 +96,6 @@ export const IssuesBoardPage: React.FC = () => {
     e.preventDefault();
     fetchIssues();
   };
-
-  const hotspots = [
-    { name: 'Chennai', count: 16, pct: 100 },
-    { name: 'Chengalpattu', count: 8, pct: 50 },
-    { name: 'Thiruvallur', count: 5, pct: 31 },
-    { name: 'Coimbatore', count: 4, pct: 25 },
-    { name: 'Tuticorin', count: 4, pct: 25 },
-    { name: 'Madurai', count: 4, pct: 25 },
-  ];
 
   return (
     <div className="flex min-h-screen bg-[#faf9f6] dark:bg-[#141211] text-stone-900 dark:text-stone-100 font-sans">
@@ -517,30 +512,34 @@ export const IssuesBoardPage: React.FC = () => {
               </div>
 
               <div className="space-y-3 text-xs">
-                {hotspots.map((h, idx) => (
-                  <div
-                    key={h.name}
-                    onClick={() => setSelectedDistrict(h.name)}
-                    className="cursor-pointer group space-y-1"
-                  >
-                    <div className="flex items-center justify-between font-medium">
-                      <span className="text-stone-700 dark:text-stone-300 group-hover:text-[#800000] dark:group-hover:text-rose-400 transition">
-                        <span className="text-stone-400 mr-2">{idx + 1}</span>
-                        {h.name}
-                      </span>
-                      <span className="font-mono font-bold text-stone-900 dark:text-white">
-                        {h.count}
-                      </span>
-                    </div>
+                {hotspots.length > 0 ? (
+                  hotspots.map((h, idx) => (
+                    <div
+                      key={h.name}
+                      onClick={() => setSelectedDistrict(h.name)}
+                      className="cursor-pointer group space-y-1"
+                    >
+                      <div className="flex items-center justify-between font-medium">
+                        <span className="text-stone-700 dark:text-stone-300 group-hover:text-[#800000] dark:group-hover:text-rose-400 transition">
+                          <span className="text-stone-400 mr-2">{idx + 1}</span>
+                          {h.name}
+                        </span>
+                        <span className="font-mono font-bold text-stone-900 dark:text-white">
+                          {h.count}
+                        </span>
+                      </div>
 
-                    <div className="w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
-                      <div
-                        className="bg-[#800000] h-full rounded-full transition-all duration-300"
-                        style={{ width: `${h.pct}%` }}
-                      />
+                      <div className="w-full bg-stone-100 dark:bg-stone-800 h-1.5 rounded-full overflow-hidden">
+                        <div
+                          className="bg-[#800000] h-full rounded-full transition-all duration-300"
+                          style={{ width: `${h.pct}%` }}
+                        />
+                      </div>
                     </div>
-                  </div>
-                ))}
+                  ))
+                ) : (
+                  <p className="text-stone-400 dark:text-stone-500 py-3 text-center">No hotspot data available</p>
+                )}
               </div>
             </div>
           </div>
