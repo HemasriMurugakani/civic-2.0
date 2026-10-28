@@ -339,7 +339,7 @@ export const SpotDetailPage: React.FC = () => {
             </h3>
             <p className="text-xs text-foreground-muted leading-relaxed font-normal">
               {spot.description ||
-                'This public location has been designated under the NammaTN Adopt-a-Spot program for citizen-led neighborhood upkeep, cleanliness monitoring, and civic pride.'}
+                'This public location has been designated under the NammaNagar Adopt-a-Spot program for citizen-led neighborhood upkeep, cleanliness monitoring, and civic pride.'}
             </p>
 
             <div className="pt-2">

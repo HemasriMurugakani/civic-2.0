@@ -2,7 +2,7 @@
 
 > **Document**: `docs/audit/data-audit.md`  
 > **Milestone**: **A1 — Data Correctness & Consistency Audit**  
-> **Target Codebase**: AI-GovInsight / NammaTN (Citizen Grievance Redressal & Transparent Governance Platform)  
+> **Target Codebase**: AI-GovInsight / NammaNagar (Citizen Grievance Redressal & Transparent Governance Platform)  
 > **Audit Date**: October 2026  
 > **Audit Status**: Complete (Audit Only — Zero Code Changes in Milestone A1)
 

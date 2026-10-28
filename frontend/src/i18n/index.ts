@@ -5,7 +5,7 @@ import LanguageDetector from 'i18next-browser-languagedetector';
 const resources = {
   en: {
     translation: {
-      appName: 'NammaTN',
+      appName: 'NammaNagar',
       appSubtitle: 'Government of Tamil Nadu Civic Grievance Portal',
       nav: {
         home: 'Home',
@@ -140,7 +140,7 @@ const resources = {
   },
   ta: {
     translation: {
-      appName: 'நம்ம தமிழ்நாடு (NammaTN)',
+      appName: 'நம்ம நகர் (NammaNagar)',
       appSubtitle: 'தமிழ்நாடு அரசு பொதுமக்கள் குறைதீர்க்கும் தளம்',
       nav: {
         home: 'முகப்பு',

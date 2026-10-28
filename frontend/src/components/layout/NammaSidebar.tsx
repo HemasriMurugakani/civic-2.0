@@ -1,9 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
 import {
-  Home, Megaphone, MapPin, Compass, Landmark, Flag,
-  BarChart3, Factory, Users, HeartPulse, Shield,
-  Droplets, Route, LogIn, LogOut, Globe, Moon, Sun,
+  Home, Megaphone, MapPin, Compass, Landmark,
+  BarChart3, Users, LogIn, LogOut, Globe, Moon, Sun,
   MessageSquare, Trophy, GraduationCap, TreePine, Flame,
   LayoutDashboard, Kanban, Map, Database, Palette,
   ChevronLeft, ChevronRight, X
@@ -13,7 +12,6 @@ import { useAuth } from '@/lib/auth';
 import { api } from '@/lib/api';
 import { Button } from '@/components/ui/Button';
 import { Modal } from '@/components/ui/Modal';
-import { Badge } from '@/components/ui/Badge';
 import { cn } from '@/lib/utils';
 
 interface NammaSidebarProps {
@@ -33,7 +31,6 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
   const navigate = useNavigate();
   const { user, logout, language, changeLanguage, theme, toggleTheme } = useAuth();
 
-  const [activeModalModule, setActiveModalModule] = useState<string | null>(null);
   const [openDataModalOpen, setOpenDataModalOpen] = useState(false);
   const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
   const [feedbackText, setFeedbackText] = useState('');
@@ -96,17 +93,6 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
   };
 
   const { mainLinks, civicLinks } = getNavSections();
-
-  const exploreLinks = [
-    { label: 'Commitments & delivery', icon: Flag },
-    { label: 'Budget & spending', icon: BarChart3 },
-    { label: 'Industries & investment', icon: Factory },
-    { label: 'Makkal Arangam', icon: Users },
-    { label: 'Hospitals & Health', icon: HeartPulse },
-    { label: 'Police & Security', icon: Shield },
-    { label: 'Water Bodies & Dams', icon: Droplets },
-    { label: 'Roads & Highways', icon: Route },
-  ];
 
   return (
     <aside
@@ -202,30 +188,6 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
             </nav>
           </div>
 
-          {/* Explore Modules (collapsed hides details) */}
-          {!collapsed && (
-            <div>
-              <div className="px-3 pb-1.5 text-[10px] font-bold uppercase tracking-wider text-stone-400 dark:text-stone-500">
-                TRANSPARENCY
-              </div>
-              <nav className="space-y-0.5">
-                {exploreLinks.map((item, idx) => {
-                  const Icon = item.icon;
-                  return (
-                    <button
-                      key={idx}
-                      type="button"
-                      onClick={() => setActiveModalModule(item.label)}
-                      className="w-full flex items-center gap-3 px-3 py-2 rounded-xl text-xs font-medium text-stone-600 dark:text-stone-400 hover:bg-stone-100/80 dark:hover:bg-stone-800/60 hover:text-stone-900 dark:hover:text-white transition text-left min-h-[36px]"
-                    >
-                      <Icon className="h-4 w-4 shrink-0 text-stone-400" />
-                      <span className="truncate">{item.label}</span>
-                    </button>
-                  );
-                })}
-              </nav>
-            </div>
-          )}
         </div>
       </div>
 
@@ -337,52 +299,6 @@ export const NammaSidebar: React.FC<NammaSidebarProps> = ({
           </div>
         )}
       </div>
-
-      {/* Explore Module Modal */}
-      <Modal
-        isOpen={!!activeModalModule}
-        onClose={() => setActiveModalModule(null)}
-        title={activeModalModule}
-        description="Tamil Nadu Open Governance Platform"
-        footer={
-          <div className="flex justify-end gap-2">
-            <Button variant="ghost" size="sm" onClick={() => setActiveModalModule(null)}>
-              Close
-            </Button>
-            <Button
-              variant="default"
-              size="sm"
-              onClick={() => {
-                setActiveModalModule(null);
-                navigate('/issues');
-              }}
-            >
-              View on Issues Board
-            </Button>
-          </div>
-        }
-      >
-        <div className="space-y-4">
-          <p className="text-xs sm:text-sm text-stone-600 dark:text-stone-300 leading-relaxed">
-            This transparency module tracks departmental budget allocations, ongoing municipal works, and citizen accountability scorecards across 38 districts of Tamil Nadu.
-          </p>
-
-          <div className="rounded-2xl bg-stone-50 dark:bg-stone-800/50 p-4 space-y-2 text-xs">
-            <div className="flex justify-between">
-              <span className="text-stone-500">Coverage:</span>
-              <span className="font-bold text-stone-800 dark:text-stone-200">38 Districts · 234 Constituencies</span>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-stone-500">Public Verification Status:</span>
-              <Badge variant="success" size="sm">Active Civic Consensus</Badge>
-            </div>
-            <div className="flex justify-between">
-              <span className="text-stone-500">Service SLA standard:</span>
-              <span className="font-bold text-emerald-600 dark:text-emerald-400">24h - 48h Escalation</span>
-            </div>
-          </div>
-        </div>
-      </Modal>
 
       {/* Open Data Modal */}
       <Modal

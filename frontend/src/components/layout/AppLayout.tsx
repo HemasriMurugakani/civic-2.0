@@ -183,7 +183,7 @@ export const AppLayout: React.FC = () => {
               </span>
               <span className="hidden sm:inline-block text-stone-300 dark:text-stone-700">|</span>
               <span className="text-xs sm:text-sm font-bold text-[#800000] dark:text-rose-400">
-                NammaTN Civic Portal
+                NammaNagar Civic Portal
               </span>
             </div>
           </div>

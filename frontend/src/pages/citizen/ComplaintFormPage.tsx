@@ -3,7 +3,7 @@ import { Navigate } from 'react-router-dom';
 
 /**
  * ComplaintFormPage
- * Canonical routing now delegates to /report (NammaTN 20-category report page)
+ * Canonical routing now delegates to /report (NammaNagar 20-category report page)
  * to maintain complete UI consistency and prevent duplicate overlapping forms.
  */
 export const ComplaintFormPage: React.FC = () => {

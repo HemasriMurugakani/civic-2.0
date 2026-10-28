@@ -192,7 +192,7 @@ export const ReportPage: React.FC = () => {
         <div className="rounded-2xl border border-amber-200/90 bg-amber-50/70 dark:border-amber-900/60 dark:bg-amber-950/30 p-3.5 text-xs text-amber-900 dark:text-amber-200 flex items-start gap-2.5 shadow-2xs">
           <Shield className="h-4 w-4 shrink-0 text-amber-600 mt-0.5" />
           <p className="leading-relaxed">
-            <strong>NammaTN</strong> is an independent civic platform. Reports are classified for public community tracking.
+            <strong>NammaNagar</strong> is an independent civic platform. Reports are classified for public community tracking.
           </p>
         </div>
 

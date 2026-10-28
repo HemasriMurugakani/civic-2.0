@@ -126,7 +126,7 @@ export const IssuesBoardPage: React.FC = () => {
       {/* Disclaimers & Notices */}
       <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
         <div className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 p-3.5 text-xs text-stone-600 dark:text-stone-300 leading-relaxed shadow-2xs">
-          NammaTN is an independent civic platform, not a government grievance portal. Reports are classified for public tracking.
+          NammaNagar is an independent civic platform, not a government grievance portal. Reports are classified for public tracking.
         </div>
         <div className="rounded-2xl border border-stone-200/90 dark:border-stone-800 bg-white dark:bg-stone-900 p-3.5 text-xs text-stone-600 dark:text-stone-300 leading-relaxed shadow-2xs">
           No account needed — you can report anonymously.{' '}

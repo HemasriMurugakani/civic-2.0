@@ -1,4 +1,4 @@
-# NammaTN (நம்ம தமிழ்நாடு)
+# NammaNagar (நம்ம நகர்)
 
 > **Citizen Grievance Redressal & Transparent Governance Platform**  
 > Government of Tamil Nadu Civic Technology Infrastructure. Built for high trust, rapid bilingual mobile reporting (<2 mins), public community verification, enforceable SLA accountability, infrastructure transparency, civic education, and community stewardship across Tamil Nadu constituencies and municipal corporations.

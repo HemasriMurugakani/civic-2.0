@@ -247,7 +247,7 @@ def verify_public_issue(
             voter = User(
                 name="Anonymous Citizen",
                 mobile="9800000000",
-                email="anonymous@nammatn.in",
+                email="anonymous@nammanagar.in",
                 hashed_password=get_password_hash("Civic@123"),
                 role=UserRole.CITIZEN,
                 preferred_language="en",
@@ -387,7 +387,7 @@ def create_public_issue(
             citizen = User(
                 name="Anonymous Citizen",
                 mobile="9800000000",
-                email="anonymous@nammatn.in",
+                email="anonymous@nammanagar.in",
                 hashed_password=get_password_hash("Civic@123"),
                 role=UserRole.CITIZEN,
                 preferred_language="en",
@@ -435,7 +435,7 @@ def create_public_issue(
         ward_id = first_ward.id if first_ward else 1
 
     title = payload.get("title") or f"Civic Issue: {payload.get('problem_type', 'Public Notice')}"
-    description = payload.get("description") or f"Civic issue reported via NammaTN. Road: {payload.get('road_type', 'Local')}. Damage: {payload.get('damage_type', 'General defect')}."
+    description = payload.get("description") or f"Civic issue reported via NammaNagar. Road: {payload.get('road_type', 'Local')}. Damage: {payload.get('damage_type', 'General defect')}."
 
     service = ComplaintService(db)
     complaint = service.create_complaint(

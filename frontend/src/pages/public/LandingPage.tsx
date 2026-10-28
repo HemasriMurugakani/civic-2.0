@@ -71,7 +71,7 @@ const SAMPLE_FLOW_REPORTS: FlowReport[] = [
       },
       {
         title: 'Mapped for public reference',
-        desc: 'NammaTN identifies the relevant authority; the report is not sent to that office.',
+        desc: 'NammaNagar identifies the relevant authority; the report is not sent to that office.',
         color: 'border-amber-500 bg-amber-500 text-white',
         done: true,
       },
@@ -1002,7 +1002,7 @@ export const LandingPage: React.FC = () => {
 
               {/* Subtitle */}
               <p className="text-xs sm:text-sm text-stone-200/90 leading-relaxed">
-                Join the <strong className="text-amber-300 font-bold">{(stats.visitor_count ?? 1415).toLocaleString()}</strong> citizens exploring NammaTN — report, verify and hold Tamil Nadu&apos;s government accountable.
+                Join the <strong className="text-amber-300 font-bold">{(stats.visitor_count ?? 1415).toLocaleString()}</strong> citizens exploring NammaNagar — report, verify and hold Tamil Nadu&apos;s government accountable.
               </p>
 
               {/* Action Buttons */}

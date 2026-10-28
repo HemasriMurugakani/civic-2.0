@@ -39,7 +39,7 @@ export const NammaLogo: React.FC<NammaLogoProps> = ({
       {/* Tamil Nadu Gopuram Crest in Maroon Rounded Badge */}
       <div
         className={`flex ${iconSizes[size]} shrink-0 items-center justify-center rounded-xl bg-[#800000] text-amber-100 shadow-sm transition-transform hover:scale-105`}
-        title="NammaTN"
+        title="NammaNagar"
       >
         <svg
           viewBox="0 0 40 40"
@@ -79,13 +79,13 @@ export const NammaLogo: React.FC<NammaLogoProps> = ({
             textColor || 'text-stone-900 dark:text-stone-100'
           }`}
         >
-          NammaTN
+          NammaNagar
         </span>
         {showSubtitle && (
           <span
             className={`font-semibold tracking-wide font-tamil text-[#800000] dark:text-rose-400 mt-0.5 ${subtitleSizes[size]}`}
           >
-            நம்ம தமிழ்நாடு
+            நம்ம நகர்
           </span>
         )}
       </div>

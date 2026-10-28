@@ -265,7 +265,7 @@ export const IssueDetailPage: React.FC = () => {
             </div>
 
             <div className="rounded-2xl bg-amber-50/70 dark:bg-amber-950/30 border border-amber-200/80 dark:border-amber-900/40 p-3 text-[11px] text-amber-900 dark:text-amber-200 leading-relaxed">
-              This is a NammaTN classification for public reference. Reports are tracked openly for civic transparency.
+              This is a NammaNagar classification for public reference. Reports are tracked openly for civic transparency.
             </div>
 
             <div>
