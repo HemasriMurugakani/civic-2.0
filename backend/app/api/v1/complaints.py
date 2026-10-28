@@ -22,7 +22,11 @@ from app.schemas.complaint import (
     StatusHistoryItem
 )
 from app.schemas.duplicate import DuplicateCheckRequest, DuplicateCheckResponse, ClusterMergeRequest
+from app.schemas.priority import PriorityPredictionRequest, PriorityPredictionResponse
+from app.schemas.summary import SummarizeRequest, ExecutiveSummaryResponse
 from app.services.duplicate_service import DuplicateDetectionService
+from app.services.priority_service import PriorityPredictionService
+from app.services.summarization_service import SummarizationService
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
 
@@ -396,11 +400,40 @@ def get_ai_insights(
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
+    svc = PriorityPredictionService(db)
+    req = PriorityPredictionRequest(
+        title=complaint.title,
+        description=complaint.description,
+        category_id=complaint.category_id,
+        category_code=complaint.category.code if complaint.category else None,
+        ward_id=complaint.ward_id,
+        location_text=complaint.address_text,
+    )
+    prediction = svc.predict_priority(req)
+
     return {
-        "status": "not_available",
-        "message": "AI insights module is scheduled for future release. Baseline rule-based classification active.",
-        "insights": [],
+        "status": "ready",
+        "complaint_id": complaint.id,
+        "current_priority": complaint.final_priority.value,
+        "recommended_priority": prediction.recommended_priority,
+        "urgency_score": prediction.urgency_score,
+        "confidence": prediction.confidence,
+        "hazard_signals": prediction.hazard_signals,
+        "sla_multiplier": prediction.sla_multiplier,
+        "sla_recommended_hours": prediction.sla_recommended_hours,
+        "explanation": prediction.explanation,
+        "model_version": "1.0.0",
+        "model_name": "NammaNagar-Multilingual-Priority-V1"
     }
+
+@router.post("/predict-priority", response_model=PriorityPredictionResponse)
+def predict_complaint_priority(
+    payload: PriorityPredictionRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    svc = PriorityPredictionService(db)
+    return svc.predict_priority(payload)
 
 @router.get("/{complaint_id}/similar")
 def get_similar_complaints(
@@ -449,4 +482,52 @@ def merge_complaints_into_cluster(
         )
         return {"status": "success", "result": result}
     except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.get("/{complaint_id}/summary", response_model=ExecutiveSummaryResponse)
+def get_complaint_executive_summary(
+    complaint_id: int,
+    language: str = Query("en", description="Output language ('en' or 'ta')"),
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Department Admin & Minister Executive AI Briefing:
+    Generates a concise 2-sentence summary with action items and key entity extraction.
+    """
+    repo = ComplaintRepository(db)
+    complaint = repo.get_scoped_by_id(complaint_id, current_user)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
+    svc = SummarizationService(db)
+    try:
+        return svc.summarize_complaint(complaint_id=complaint_id, language=language)
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=str(e))
+
+@router.post("/{complaint_id}/summarize", response_model=ExecutiveSummaryResponse)
+def summarize_complaint_post(
+    complaint_id: int,
+    payload: SummarizeRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    """
+    Customizable Executive AI Briefing generation with options for history and comments.
+    """
+    repo = ComplaintRepository(db)
+    complaint = repo.get_scoped_by_id(complaint_id, current_user)
+    if not complaint:
+        raise HTTPException(status_code=404, detail="Complaint not found")
+
+    svc = SummarizationService(db)
+    try:
+        return svc.summarize_complaint(
+            complaint_id=complaint_id,
+            include_history=payload.include_history,
+            include_comments=payload.include_comments,
+            language=payload.language
+        )
+    except Exception as e:
         raise HTTPException(status_code=400, detail=str(e))

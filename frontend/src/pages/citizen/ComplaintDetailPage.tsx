@@ -16,6 +16,7 @@ import {
   PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent,
   Button, Badge, Modal, Input, Skeleton
 } from '@/components/ui';
+import { ExecutiveSummaryCard } from '@/components/common/ExecutiveSummaryCard';
 
 export const ComplaintDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -143,6 +144,9 @@ export const ComplaintDetailPage: React.FC = () => {
           { label: complaint.reference_no },
         ]}
       />
+
+      {/* Executive AI Briefing */}
+      <ExecutiveSummaryCard complaintId={complaint.id} />
 
       {/* Main Header Card */}
       <Card className="p-6 sm:p-8 space-y-4">

@@ -168,6 +168,20 @@ Public and authenticated pre-submission duplicate detection seam. Evaluates titl
 ### `POST /complaints/merge-cluster`
 Merges multiple duplicate grievances under a Master Incident (`ComplaintCluster`). Restricted to Nodal Officers and Admins.
 
+### `GET /complaints/{id}/ai-insights`
+Live AI Risk and Severity Inspection endpoint. Returns predicted priority tier, urgency score (0.0 - 1.0), confidence level, detected hazard signals, and recommended SLA multiplier.
+
+### `POST /complaints/predict-priority` & `POST /public/issues/predict-priority`
+Bilingual AI Priority Prediction seam (Tamil, English, Tanglish). Uses multilingual vector embeddings and domain hazard rules to evaluate life-safety risks.
+- **Specification**: See detailed documentation in [`docs/architecture/priority-prediction.md`](./architecture/priority-prediction.md).
+
+### `GET /complaints/{id}/summary` & `GET /public/issues/{id}/summary`
+Executive AI Briefing Engine for Ministers and Department Admins. Generates a strict 2-sentence summary (Sentence 1: problem origin; Sentence 2: operational milestone and active officer status), actionable next steps, and key entity metadata in English or Tamil (`?language=en|ta`).
+- **Specification**: See detailed documentation in [`docs/architecture/grievance-summarization.md`](./architecture/grievance-summarization.md).
+
+### `POST /complaints/{id}/summarize`
+Customizable executive briefing endpoint with optional audit timeline and discussion comment inclusion parameters.
+
 ---
 
 ## 3. Public Endpoints (`/public`)

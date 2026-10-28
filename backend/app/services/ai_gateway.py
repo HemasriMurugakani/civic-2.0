@@ -12,7 +12,7 @@ class AIProvider(Protocol):
     def find_similar(self, complaint_id: int, limit: int = 5, db: Optional[Session] = None) -> List[Dict[str, Any]]:
         ...
 
-    def summarize(self, complaint_id: int) -> Dict[str, Any]:
+    def summarize(self, complaint_id: int, db: Optional[Session] = None, language: str = "en") -> Dict[str, Any]:
         ...
 
 
@@ -28,8 +28,8 @@ class NoopProvider:
     def find_similar(self, complaint_id: int, limit: int = 5, db: Optional[Session] = None) -> List[Dict[str, Any]]:
         return []
 
-    def summarize(self, complaint_id: int) -> Dict[str, Any]:
-        return {"status": "not_available", "summary": None, "key_points": []}
+    def summarize(self, complaint_id: int, db: Optional[Session] = None, language: str = "en") -> Dict[str, Any]:
+        return {"status": "not_available", "summary": None, "action_items": [], "key_entities": {}}
 
 
 class LocalMultilingualAIProvider:
@@ -50,15 +50,21 @@ class LocalMultilingualAIProvider:
         return {"status": "predicted", "suggested_category": "General Sanitation", "confidence": 0.65}
 
     def score_priority(self, title: str, description: str, category_name: str) -> Dict[str, Any]:
-        text = f"{title} {description}".lower()
-        hazards = []
-        if any(w in text for w in ["spark", "fire", "danger", "shock", "live wire", "open manhole"]):
-            hazards.append("Life safety hazard detected")
-            return {"status": "scored", "recommended_priority": "CRITICAL", "confidence": 0.95, "hazards": hazards}
-        if any(w in text for w in ["school", "hospital", "flood", "main road", "blocked"]):
-            hazards.append("High public impact zone")
-            return {"status": "scored", "recommended_priority": "HIGH", "confidence": 0.85, "hazards": hazards}
-        return {"status": "scored", "recommended_priority": "MEDIUM", "confidence": 0.70, "hazards": []}
+        from app.services.priority_service import PriorityPredictionService
+        from app.schemas.priority import PriorityPredictionRequest
+        svc = PriorityPredictionService(None)
+        req = PriorityPredictionRequest(title=title, description=description)
+        res = svc.predict_priority(req)
+        return {
+            "status": "scored",
+            "recommended_priority": res.recommended_priority,
+            "urgency_score": res.urgency_score,
+            "confidence": res.confidence,
+            "hazard_signals": res.hazard_signals,
+            "sla_multiplier": res.sla_multiplier,
+            "sla_recommended_hours": res.sla_recommended_hours,
+            "explanation": res.explanation,
+        }
 
     def find_similar(self, complaint_id: int, limit: int = 5, db: Optional[Session] = None) -> List[Dict[str, Any]]:
         if not db:
@@ -75,12 +81,22 @@ class LocalMultilingualAIProvider:
             svc = DuplicateDetectionService(db)
             return svc.find_similar_complaints(complaint_id, limit=limit)
 
-    def summarize(self, complaint_id: int) -> Dict[str, Any]:
-        return {
-            "status": "ready",
-            "summary": "Citizen filed grievance regarding civic infrastructure defect. Ongoing operational tracking active.",
-            "key_points": ["Incident logged with GPS evidence", "Assigned SLA monitoring active"]
-        }
+    def summarize(self, complaint_id: int, db: Optional[Session] = None, language: str = "en") -> Dict[str, Any]:
+        if not db:
+            from app.core.database import SessionLocal
+            db = SessionLocal()
+            try:
+                from app.services.summarization_service import SummarizationService
+                svc = SummarizationService(db)
+                res = svc.summarize_complaint(complaint_id, language=language)
+                return res.model_dump()
+            finally:
+                db.close()
+        else:
+            from app.services.summarization_service import SummarizationService
+            svc = SummarizationService(db)
+            res = svc.summarize_complaint(complaint_id, language=language)
+            return res.model_dump()
 
 
 def get_ai_provider() -> AIProvider:

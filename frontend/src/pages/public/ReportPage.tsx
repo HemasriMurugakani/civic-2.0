@@ -77,11 +77,13 @@ export const ReportPage: React.FC = () => {
   const [showMoreDetails, setShowMoreDetails] = useState<boolean>(false);
   const [duplicateCandidates, setDuplicateCandidates] = useState<any[]>([]);
   const [checkingDuplicates, setCheckingDuplicates] = useState<boolean>(false);
+  const [aiPriority, setAiPriority] = useState<any>(null);
 
-  // Debounced AI Duplicate Check
+  // Debounced AI Duplicate Check & Priority Prediction
   useEffect(() => {
     if (!title || title.trim().length < 5) {
       setDuplicateCandidates([]);
+      setAiPriority(null);
       return;
     }
 
@@ -105,10 +107,23 @@ export const ReportPage: React.FC = () => {
       .finally(() => {
         setCheckingDuplicates(false);
       });
+
+      api.predictIssuePriority({
+        title,
+        description: description || title,
+        location_text: constituency,
+      })
+      .then((res) => {
+        setAiPriority(res);
+        if (res.recommended_priority === 'CRITICAL') {
+          setSeverity('critical');
+        }
+      })
+      .catch(() => {});
     }, 600);
 
     return () => clearTimeout(timer);
-  }, [title, description, locationCoords]);
+  }, [title, description, locationCoords, constituency]);
 
   const spotIdParam = searchParams.get('spot_id');
   const spotName = searchParams.get('spot_name');
@@ -377,9 +392,17 @@ export const ReportPage: React.FC = () => {
                   </div>
 
                   <div>
-                    <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300 mb-1.5">
-                      Severity Level
-                    </label>
+                    <div className="flex items-center justify-between mb-1.5 flex-wrap gap-2">
+                      <label className="block text-xs font-semibold text-stone-700 dark:text-stone-300">
+                        Severity Level
+                      </label>
+                      {aiPriority && (
+                        <span className="text-[11px] font-bold text-amber-700 dark:text-amber-400 flex items-center gap-1 bg-amber-50 dark:bg-amber-950/60 px-2 py-0.5 rounded-full border border-amber-200 dark:border-amber-900/40">
+                          <Sparkles className="h-3 w-3" />
+                          <span>AI Suggests: <strong className="uppercase">{aiPriority.recommended_priority}</strong> ({Math.round(aiPriority.urgency_score * 100)}% urgency)</span>
+                        </span>
+                      )}
+                    </div>
                     <div className="flex gap-2 flex-wrap">
                       {['low', 'medium', 'high', 'critical'].map((lvl) => (
                         <button
@@ -388,7 +411,7 @@ export const ReportPage: React.FC = () => {
                           onClick={() => setSeverity(lvl)}
                           className={`px-3 py-1.5 rounded-xl text-xs capitalize font-semibold transition min-h-[36px] ${
                             severity === lvl
-                              ? 'bg-[#800000] dark:bg-rose-600 text-white'
+                              ? 'bg-[#800000] dark:bg-rose-600 text-white shadow-2xs'
                               : 'bg-white dark:bg-stone-900 border border-stone-200 dark:border-stone-700 text-stone-600 dark:text-stone-300'
                           }`}
                         >
@@ -396,6 +419,22 @@ export const ReportPage: React.FC = () => {
                         </button>
                       ))}
                     </div>
+
+                    {aiPriority?.hazard_signals?.length > 0 && (
+                      <div className="mt-2 space-y-1">
+                        <span className="text-[10px] text-stone-400 font-bold uppercase tracking-wider block">Detected Hazard Signals</span>
+                        <div className="flex flex-wrap gap-1.5">
+                          {aiPriority.hazard_signals.map((sig: string, idx: number) => (
+                            <span
+                              key={idx}
+                              className="text-[10px] font-bold bg-rose-50 text-rose-700 dark:bg-rose-950/60 dark:text-rose-300 border border-rose-200 dark:border-rose-900/60 px-2 py-0.5 rounded-full flex items-center gap-1"
+                            >
+                              ⚠️ {sig}
+                            </span>
+                          ))}
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
               )}

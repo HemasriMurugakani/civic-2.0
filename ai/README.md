@@ -30,23 +30,34 @@ This document specifies the planned AI services, data contracts, and integration
 
 ---
 
-## 2. Task B: Severity & Urgency Priority Scoring (`score_priority`)
-- **Objective**: Detect life-safety risks (e.g. open manholes during monsoon, live dangling electric wires, contaminated drinking water) and automatically recommend priority level (`critical`, `high`, `medium`, `low`).
-- **Planned Model**: DistilBERT with risk-keyword attention layers and spatial hazard proximity features.
+## 2. Task B: Severity & Urgency Priority Scoring (`score_priority`) — [LIVE]
+- **Status**: **Implemented & Deployed** (`app.services.priority_service.PriorityPredictionService`)
+- **Objective**: Detect life-safety hazards (live dangling wires, open manholes, contaminated drinking water, hospital/school zones, fire/spark hazards, structural collapse) and automatically recommend priority tier (`CRITICAL`, `HIGH`, `MEDIUM`, `LOW`) with accelerated SLA resolution deadlines.
+- **Model Architecture**: FastEmbed Multilingual ONNX Embeddings (`sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2`) with Canonical Bilingual Anchor Bank + Domain Hazard Signal Rules (Tamil, English, and Tanglish).
+- **Active Endpoints**:
+  - `POST /api/v1/public/issues/predict-priority` (Public pre-submission priority prediction seam)
+  - `POST /api/v1/complaints/predict-priority` (Authenticated priority prediction seam)
+  - `GET /api/v1/complaints/{id}/ai-insights` (Officer & Auditor AI Risk Inspection)
 - **Contract**:
   ```json
-  // Input
+  // Input (POST /api/v1/public/issues/predict-priority)
   {
-    "title": "Dangling high voltage wire near school gate",
-    "description": "Wire sparking, children walking past",
-    "ward_id": 51
+    "title": "Dangling high voltage wire near primary school gate",
+    "description": "Wire sparking, children walking past, danger of electrocution",
+    "location_text": "Anna Salai, Royapuram"
   }
   // Output
   {
-    "recommended_priority": "critical",
-    "urgency_score": 0.98,
-    "hazard_signals": ["high voltage", "school proximity", "sparking"],
-    "sla_multiplier": 0.5
+    "recommended_priority": "CRITICAL",
+    "urgency_score": 0.97,
+    "confidence": 0.99,
+    "hazard_signals": [
+      "Live electric wire / electrocution hazard",
+      "School zone / children proximity"
+    ],
+    "sla_multiplier": 0.25,
+    "sla_recommended_hours": 6,
+    "explanation": "Classified as CRITICAL due to imminent life-safety or public health hazard signals. Detected hazards: Live electric wire / electrocution hazard, School zone / children proximity."
   }
   ```
 
@@ -98,20 +109,42 @@ This document specifies the planned AI services, data contracts, and integration
 
 ---
 
-## 4. Task D: Thread & Grievance Summarization (`summarize`)
-- **Objective**: Generate concise 2-sentence executive summaries for Department Admins and Ministers.
-- **Planned Model**: Gemini 1.5 Flash / Gemma 2 9B.
+## 4. Task D: Thread & Grievance Summarization (`summarize`) — [LIVE]
+- **Status**: **Implemented & Deployed** (`app.services.summarization_service.SummarizationService`)
+- **Objective**: Generate concise 2-sentence executive summaries for Department Admins and Ministers with immediate actionable next steps and entity extraction.
+- **Engine**: Fast Bilingual Executive Briefing Engine adhering to the **2-sentence structural invariant** (Sentence 1: Origin, Date, Ward, and Defect Category; Sentence 2: Field Notes, Assigned Officer, and Real-Time Resolution Milestone) in English & Tamil (`தமிழ்`).
+- **Active Endpoints**:
+  - `GET /api/v1/public/issues/{id}/summary?language=en|ta` (Public Executive Briefing for citizens, ministers, and auditors)
+  - `GET /api/v1/complaints/{id}/summary?language=en|ta` (Department Admin and Officer Executive Briefing)
+  - `POST /api/v1/complaints/{id}/summarize` (Customizable briefing with history and comment controls)
+- **Frontend Integration**: [`ExecutiveSummaryCard.tsx`](file:///Users/mk/Desktop/civic-2.0/frontend/src/components/common/ExecutiveSummaryCard.tsx) on `/issues/:id` and `/complaints/:id` with one-click EN/தமிழ் toggle, ministerial copy button, and actionable next steps.
 - **Contract**:
   ```json
-  // Input
+  // Request: GET /api/v1/public/issues/1/summary?language=en
+  // Response (200 OK)
   {
-    "complaint_id": 1420,
-    "include_history": true
-  }
-  // Output
-  {
-    "summary": "Resident reported contaminated tap water on 12th Oct. Crew isolated pipe rupture; repair ongoing; citizen notified.",
-    "action_items": ["Inspect valve 4B", "Collect water sample for purity test"],
-    "status": "ready"
+    "status": "ready",
+    "complaint_id": 1,
+    "reference_no": "TN-2026-000001",
+    "headline": "Garbage Accumulation at Ward 21 - Chromepet, Chengalpattu",
+    "summary": "Resident reported சந்தை பகுதியில் பெருமளவு குப்பை தேக்கம் in Ward 21 - Chromepet, Chengalpattu on Sep 05, 2026, classified under Garbage Accumulation. Field operations are actively underway (field crew actively executing rectification work) under assigned officer Manikandan R..",
+    "action_items": [
+      "Complete on-site physical civil/electrical rectification work",
+      "Capture and upload mandatory post-repair evidence photograph"
+    ],
+    "key_entities": {
+      "department": "Sanitation & Solid Waste Management",
+      "ward": "Ward 21 - Chromepet, Chengalpattu",
+      "ward_number": 202,
+      "status": "in_progress",
+      "priority": "high",
+      "assigned_officer": "Manikandan R.",
+      "elapsed_days": 53.5,
+      "sla_status": "breached_sla",
+      "evidence_count": 0,
+      "timeline_events_count": 4
+    },
+    "language": "en",
+    "model_name": "NammaNagar-Executive-Summarizer-V1"
   }
   ```

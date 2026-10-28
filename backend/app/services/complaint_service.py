@@ -94,6 +94,29 @@ class ComplaintService:
         lat = latitude if latitude is not None else (ward.centroid_lat if ward else 13.0827)
         lng = longitude if longitude is not None else (ward.centroid_lng if ward else 80.2707)
 
+        # AI Priority & Life Hazard Evaluation
+        final_prio = category.default_priority or ComplaintPriority.MEDIUM
+        prio_res = None
+        try:
+            from app.services.priority_service import PriorityPredictionService
+            from app.schemas.priority import PriorityPredictionRequest
+            prio_svc = PriorityPredictionService(self.db)
+            prio_res = prio_svc.predict_priority(
+                PriorityPredictionRequest(
+                    title=title,
+                    description=description,
+                    category_id=category_id,
+                    ward_id=ward_id,
+                    location_text=address_text,
+                )
+            )
+            if prio_res.recommended_priority == "CRITICAL":
+                final_prio = ComplaintPriority.CRITICAL
+                sla_hours = max(int(sla_hours * prio_res.sla_multiplier), 4)
+                sla_deadline = now + timedelta(hours=sla_hours)
+        except Exception:
+            pass
+
         complaint = Complaint(
             reference_no=reference_no,
             citizen_id=citizen.id,
@@ -106,13 +129,32 @@ class ComplaintService:
             address_text=address_text,
             channel=channel,
             status=ComplaintStatus.SUBMITTED,
-            final_priority=category.default_priority or ComplaintPriority.MEDIUM,
+            final_priority=final_prio,
             sla_deadline=sla_deadline,
             escalation_level=0,
             created_at=now,
             updated_at=now,
         )
         self.complaint_repo.create(complaint)
+
+        # Persist AIPrediction record
+        try:
+            if prio_res:
+                from app.models.entities import AIPrediction
+                pred = AIPrediction(
+                    complaint_id=complaint.id,
+                    task="priority_scoring",
+                    label=prio_res.recommended_priority.lower(),
+                    score=prio_res.urgency_score,
+                    confidence=prio_res.confidence,
+                    model_name="NammaNagar-Multilingual-Priority-V1",
+                    model_version="1.0.0",
+                    created_at=now,
+                )
+                self.db.add(pred)
+                self.db.commit()
+        except Exception:
+            pass
 
         # Initial history record
         history = ComplaintStatusHistory(

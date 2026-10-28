@@ -13,6 +13,29 @@ import {
   CampaignListItem, CampaignDetail, CampaignLeaderboardEntry, CampaignListResponse, CampaignSyncSummary
 } from './types';
 
+export interface ExecutiveSummaryResponse {
+  status: string;
+  complaint_id: number;
+  reference_no: string;
+  headline: string;
+  summary: string;
+  action_items: string[];
+  key_entities: {
+    department?: string;
+    ward?: string;
+    ward_number?: number;
+    status?: string;
+    priority?: string;
+    assigned_officer?: string;
+    elapsed_days?: number;
+    sla_status?: string;
+    evidence_count?: number;
+    timeline_events_count?: number;
+  };
+  language: string;
+  model_name: string;
+}
+
 const API_BASE = '/api/v1';
 
 export class ApiError extends Error {
@@ -107,6 +130,9 @@ export const api = {
   getPublicIssueDetail: (id: string | number) =>
     request<any>(`/public/issues/${encodeURIComponent(String(id))}`),
 
+  getExecutiveSummary: (id: string | number, language: string = 'en') =>
+    request<ExecutiveSummaryResponse>(`/public/issues/${encodeURIComponent(String(id))}/summary?language=${encodeURIComponent(language)}`),
+
   verifyPublicIssue: (id: string | number, action: string = 'confirm') =>
     request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
       method: 'POST',
@@ -154,6 +180,27 @@ export const api = {
       body: JSON.stringify(payload),
     }),
 
+  predictIssuePriority: (payload: {
+    title: string;
+    description?: string;
+    category_id?: number;
+    category_code?: string;
+    ward_id?: number;
+    location_text?: string;
+  }) =>
+    request<{
+      recommended_priority: 'CRITICAL' | 'HIGH' | 'MEDIUM' | 'LOW';
+      urgency_score: number;
+      confidence: number;
+      hazard_signals: string[];
+      sla_multiplier: number;
+      sla_recommended_hours: number;
+      explanation: string;
+    }>('/public/issues/predict-priority', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   disputePublicIssue: (id: string | number) =>
     request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
       method: 'POST',
@@ -180,6 +227,8 @@ export const api = {
 
   getComplaintDetail: (id: number) => request<ComplaintDetail>(`/complaints/${id}`),
   getComplaint: (id: number) => request<ComplaintDetail>(`/complaints/${id}`),
+  getComplaintSummary: (id: number, language: string = 'en') =>
+    request<ExecutiveSummaryResponse>(`/complaints/${id}/summary?language=${encodeURIComponent(language)}`),
 
   verifyResolution: (id: number, payload: { rating: number; comment?: string }) =>
     request<any>(`/complaints/${id}/feedback`, {

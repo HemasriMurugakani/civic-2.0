@@ -10,6 +10,7 @@ import {
   PageHeader, Breadcrumbs, Card, CardHeader, CardTitle, CardContent,
   Button, Badge, Skeleton
 } from '@/components/ui';
+import { ExecutiveSummaryCard } from '@/components/common/ExecutiveSummaryCard';
 
 export const IssueDetailPage: React.FC = () => {
   const { id } = useParams<{ id: string }>();
@@ -113,6 +114,9 @@ export const IssueDetailPage: React.FC = () => {
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-start">
         {/* LEFT: Issue Details (8 cols) */}
         <div className="lg:col-span-8 space-y-6">
+          {/* Executive AI Briefing (Ministers & Department Admins) */}
+          <ExecutiveSummaryCard complaintId={issue.id || id} isPublic={true} />
+
           <Card className="p-6 sm:p-8 space-y-6">
             {/* Header Badges */}
             <div className="flex items-center justify-between">
