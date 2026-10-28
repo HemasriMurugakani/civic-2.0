@@ -119,6 +119,41 @@ export const api = {
       body: JSON.stringify({ action: 'confirm' }),
     }),
 
+  checkDuplicateIssue: (payload: {
+    title: string;
+    description: string;
+    ward_id?: number;
+    category_id?: number;
+    latitude?: number;
+    longitude?: number;
+    threshold?: number;
+    limit?: number;
+    days_cutoff?: number;
+  }) =>
+    request<{
+      is_duplicate_likely: boolean;
+      highest_score: number;
+      candidates_count: number;
+      candidates: Array<{
+        complaint_id: number;
+        reference_no: string;
+        title: string;
+        description: string;
+        category_name: string;
+        ward_name: string;
+        ward_number?: number;
+        status: string;
+        created_at: string;
+        distance_meters?: number;
+        semantic_similarity: number;
+        spatial_score: number;
+        composite_score: number;
+      }>;
+    }>('/public/issues/check-duplicate', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
+
   disputePublicIssue: (id: string | number) =>
     request<any>(`/public/issues/${encodeURIComponent(String(id))}/verify`, {
       method: 'POST',
@@ -205,7 +240,13 @@ export const api = {
     }),
 
   getAiInsights: (id: number) => request<any>(`/complaints/${id}/ai-insights`),
-  getSimilarComplaints: (id: number) => request<any>(`/complaints/${id}/similar`),
+  getSimilarComplaints: (id: number, limit: number = 5, threshold: number = 0.6) =>
+    request<any>(`/complaints/${id}/similar?limit=${limit}&threshold=${threshold}`),
+  mergeClusterComplaints: (payload: { master_complaint_id: number; duplicate_complaint_ids: number[]; cluster_name?: string; reason?: string }) =>
+    request<any>('/complaints/merge-cluster', {
+      method: 'POST',
+      body: JSON.stringify(payload),
+    }),
 
   // Analytics
   getKpi: (params: Record<string, any> = {}) => {

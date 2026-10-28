@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import {
   Shield, User, MapPin, Camera, Check,
-  AlertTriangle, UploadCloud, X, Loader2
+  AlertTriangle, UploadCloud, X, Loader2, Sparkles
 } from 'lucide-react';
 import { api } from '@/lib/api';
 import { useAuth } from '@/lib/auth';
@@ -75,6 +75,40 @@ export const ReportPage: React.FC = () => {
 
   const [submitting, setSubmitting] = useState<boolean>(false);
   const [showMoreDetails, setShowMoreDetails] = useState<boolean>(false);
+  const [duplicateCandidates, setDuplicateCandidates] = useState<any[]>([]);
+  const [checkingDuplicates, setCheckingDuplicates] = useState<boolean>(false);
+
+  // Debounced AI Duplicate Check
+  useEffect(() => {
+    if (!title || title.trim().length < 5) {
+      setDuplicateCandidates([]);
+      return;
+    }
+
+    const timer = setTimeout(() => {
+      setCheckingDuplicates(true);
+      api.checkDuplicateIssue({
+        title,
+        description: description || title,
+        latitude: locationCoords?.lat,
+        longitude: locationCoords?.lng,
+        threshold: 0.45,
+        limit: 3,
+        days_cutoff: 180,
+      })
+      .then((res) => {
+        setDuplicateCandidates(res.candidates || []);
+      })
+      .catch(() => {
+        setDuplicateCandidates([]);
+      })
+      .finally(() => {
+        setCheckingDuplicates(false);
+      });
+    }, 600);
+
+    return () => clearTimeout(timer);
+  }, [title, description, locationCoords]);
 
   const spotIdParam = searchParams.get('spot_id');
   const spotName = searchParams.get('spot_name');
@@ -265,6 +299,58 @@ export const ReportPage: React.FC = () => {
               onChange={(e) => setTitle(e.target.value)}
               placeholder="e.g. Large pothole on Anna Salai near bus stop"
             />
+
+            {/* AI Semantic Duplicate Detection Alert */}
+            {checkingDuplicates && (
+              <div className="flex items-center gap-2 text-xs text-stone-500 italic py-1 animate-pulse">
+                <Loader2 className="h-3.5 w-3.5 animate-spin text-[#800000] dark:text-rose-400" />
+                <span>Checking locality for duplicate reports with AI embeddings...</span>
+              </div>
+            )}
+
+            {duplicateCandidates.length > 0 && (
+              <div className="rounded-2xl border border-amber-300 dark:border-amber-900/60 bg-amber-50/80 dark:bg-amber-950/40 p-3.5 space-y-2.5 animate-in fade-in">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2 text-xs font-bold text-amber-900 dark:text-amber-200">
+                    <Sparkles className="h-4 w-4 text-amber-600 dark:text-amber-400 shrink-0" />
+                    <span>AI Duplicate Detection: {duplicateCandidates.length} similar issue(s) reported nearby</span>
+                  </div>
+                  <Badge variant="warning" size="sm">
+                    {Math.round(duplicateCandidates[0].composite_score * 100)}% match
+                  </Badge>
+                </div>
+
+                <div className="space-y-1.5">
+                  {duplicateCandidates.map((cand) => (
+                    <div
+                      key={cand.complaint_id}
+                      className="flex items-center justify-between gap-3 p-2.5 rounded-xl bg-white dark:bg-stone-900 border border-amber-200/80 dark:border-amber-900/40 text-xs shadow-2xs"
+                    >
+                      <div className="min-w-0 flex-1">
+                        <span className="font-bold text-stone-900 dark:text-stone-100 block truncate">
+                          {cand.title}
+                        </span>
+                        <span className="text-[11px] text-stone-500 dark:text-stone-400 block truncate">
+                          {cand.reference_no} · {cand.ward_name} · {Math.round(cand.composite_score * 100)}% similarity
+                          {cand.distance_meters !== null && cand.distance_meters !== undefined ? ` · ${cand.distance_meters}m away` : ''}
+                        </span>
+                      </div>
+                      <Link
+                        to={`/track/${cand.reference_no}`}
+                        target="_blank"
+                        className="text-xs font-bold text-[#800000] dark:text-rose-400 hover:underline shrink-0"
+                      >
+                        View & Upvote ↗
+                      </Link>
+                    </div>
+                  ))}
+                </div>
+
+                <p className="text-[11px] text-amber-800/90 dark:text-amber-300/90 leading-relaxed">
+                  💡 <strong>Tip:</strong> Upvoting an existing report increases its civic consensus priority and guarantees SLA accountability without creating duplicate tickets for the field team.
+                </p>
+              </div>
+            )}
 
             <div>
               <button

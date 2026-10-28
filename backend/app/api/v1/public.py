@@ -16,6 +16,8 @@ from app.services.sla_service import SLAService
 from app.services.metrics_service import MetricsService
 from app.services.masking_service import MaskingService
 from app.schemas.complaint import PublicTrackResponse, StatusHistoryItem
+from app.schemas.duplicate import DuplicateCheckRequest, DuplicateCheckResponse
+from app.services.duplicate_service import DuplicateDetectionService
 
 router = APIRouter(prefix="/public", tags=["Public"])
 
@@ -467,3 +469,16 @@ def create_public_issue(
         "status": complaint.status.value,
         "message": "Grievance submitted successfully and published for community verification."
     }
+
+
+@router.post("/issues/check-duplicate", response_model=DuplicateCheckResponse)
+def check_public_issue_duplicate(
+    payload: DuplicateCheckRequest,
+    db: Session = Depends(get_db),
+):
+    """
+    Public AI duplicate detection seam called live by the report form.
+    Returns similar grievances filed in the same locality to prevent redundant reports.
+    """
+    svc = DuplicateDetectionService(db)
+    return svc.check_duplicate(payload)

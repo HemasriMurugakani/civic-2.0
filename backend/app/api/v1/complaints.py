@@ -21,6 +21,8 @@ from app.schemas.complaint import (
     ComplaintEvidenceResponse, CitizenFeedbackCreate, CitizenFeedbackResponse,
     StatusHistoryItem
 )
+from app.schemas.duplicate import DuplicateCheckRequest, DuplicateCheckResponse, ClusterMergeRequest
+from app.services.duplicate_service import DuplicateDetectionService
 
 router = APIRouter(prefix="/complaints", tags=["Complaints"])
 
@@ -403,6 +405,8 @@ def get_ai_insights(
 @router.get("/{complaint_id}/similar")
 def get_similar_complaints(
     complaint_id: int,
+    limit: int = Query(5, ge=1, le=20),
+    threshold: float = Query(0.60, ge=0.0, le=1.0),
     current_user: User = Depends(get_current_user),
     db: Session = Depends(get_db),
 ):
@@ -411,8 +415,38 @@ def get_similar_complaints(
     if not complaint:
         raise HTTPException(status_code=404, detail="Complaint not found")
 
+    svc = DuplicateDetectionService(db)
+    items = svc.find_similar_complaints(complaint_id, limit=limit, threshold=threshold)
     return {
-        "status": "not_available",
-        "message": "Vector similarity matching engine is coming soon.",
-        "items": [],
+        "status": "ready",
+        "complaint_id": complaint_id,
+        "count": len(items),
+        "items": items,
     }
+
+@router.post("/check-duplicate", response_model=DuplicateCheckResponse)
+def check_duplicate_complaint(
+    payload: DuplicateCheckRequest,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db),
+):
+    svc = DuplicateDetectionService(db)
+    return svc.check_duplicate(payload)
+
+@router.post("/merge-cluster")
+def merge_complaints_into_cluster(
+    payload: ClusterMergeRequest,
+    current_user: User = Depends(require_roles(UserRole.OFFICER, UserRole.DEPT_ADMIN, UserRole.GOV_ADMIN)),
+    db: Session = Depends(get_db),
+):
+    svc = DuplicateDetectionService(db)
+    try:
+        result = svc.merge_into_cluster(
+            master_complaint_id=payload.master_complaint_id,
+            duplicate_ids=payload.duplicate_complaint_ids,
+            cluster_name=payload.cluster_name,
+            reason=payload.reason,
+        )
+        return {"status": "success", "result": result}
+    except ValueError as e:
+        raise HTTPException(status_code=400, detail=str(e))

@@ -53,6 +53,13 @@
 - **Milestone Task Progress**: Citizens join campaigns, execute designated tasks, and earn bonus points and exclusive badges.
 - **Automated Lifecycle Transitions**: Time-based background transitions (`draft -> scheduled -> active -> completed`).
 
+### 8. AI Semantic Duplicate Detection & Clustering (Milestone AI-1) (`/report`)
+- **Local Multilingual ONNX Embeddings**: FastEmbed `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` (384 dimensions, 6ms CPU inference).
+- **Hybrid Spatio-Temporal Consensus Formula**: Jointly evaluates text cosine similarity (0.50), geodesic distance (0.30), category taxonomy (0.15), and temporal decay (0.05).
+- **Live Citizen Upvote Seam**: Real-time debounced check on `/report` surfaces nearby matching tickets to prevent redundant filings.
+- **Master Incident Clustering**: Merges duplicate tickets under canonical `ComplaintCluster` entities.
+- **Architecture Documentation**: Detailed specifications in [`docs/architecture/semantic-duplicate-detection.md`](docs/architecture/semantic-duplicate-detection.md).
+
 ---
 
 ## 🚀 Quickstart & Setup Guide

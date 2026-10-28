@@ -52,27 +52,45 @@ This document specifies the planned AI services, data contracts, and integration
 
 ---
 
-## 3. Task C: Vector Semantic Duplicate Detection (`find_similar`)
-- **Objective**: Cluster citizen reports about the same incident (e.g., 20 residents filing complaints about the same transformer blast or main water burst) to prevent duplicate work and compute issue impact.
-- **Planned Model**: `text-embedding-3-small` / sentence-transformers (`paraphrase-multilingual-mpnet-base-v2`) with cosine similarity index in pgvector.
+## 3. Task C: Vector Semantic Duplicate Detection (`find_similar`) — [LIVE]
+- **Status**: **Implemented & Deployed** (`app.services.duplicate_service.DuplicateDetectionService`)
+- **Objective**: Cluster citizen reports about the same incident (e.g., 20 residents filing complaints about the same transformer blast or main water burst) to prevent duplicate work, alert citizens during filing, and compute issue impact.
+- **Model**: Local ONNX `sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2` via `fastembed` (384-dimensional dense bilingual embeddings, 6ms CPU inference).
+- **Hybrid Scoring**:
+  $$\text{DuplicateScore} = 0.50 \cdot S_{\text{semantic}} + 0.30 \cdot S_{\text{spatial}} + 0.15 \cdot S_{\text{category}} + 0.05 \cdot S_{\text{temporal}}$$
+- **Active Endpoints**:
+  - `POST /api/v1/public/issues/check-duplicate` (Public live check before citizen submission)
+  - `GET /api/v1/complaints/{id}/similar` (Officer candidate view)
+  - `POST /api/v1/complaints/merge-cluster` (Cluster & merge under Master Incident)
 - **Contract**:
   ```json
-  // Input
+  // Input (POST /api/v1/public/issues/check-duplicate)
   {
-    "complaint_id": 1420,
-    "limit": 5,
-    "threshold": 0.85
+    "title": "Water pipe broken near market",
+    "description": "Drinking water flowing on road",
+    "ward_id": 51,
+    "latitude": 13.1110,
+    "longitude": 80.2970,
+    "threshold": 0.65,
+    "limit": 5
   }
   // Output
   {
-    "cluster_id": "cluster_2026_w10_transformer",
-    "similar_complaints": [
+    "is_duplicate_likely": true,
+    "highest_score": 0.89,
+    "candidates_count": 2,
+    "candidates": [
       {
         "complaint_id": 1418,
         "reference_no": "GOV-2026-001418",
-        "similarity_score": 0.92,
-        "ward_id": 130,
-        "distance_meters": 45
+        "title": "Main water supply pipe burst",
+        "description": "Water leaking on road since morning",
+        "category_name": "Pipe Burst & Water Loss",
+        "ward_name": "Zone 5 - Royapuram",
+        "distance_meters": 45.2,
+        "semantic_similarity": 0.91,
+        "spatial_score": 1.0,
+        "composite_score": 0.89
       }
     ]
   }

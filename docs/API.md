@@ -154,8 +154,19 @@ Citizen rating (1-5 stars) and resolution confirmation.
   }
   ```
 
-### `GET /complaints/{id}/ai-insights` & `GET /complaints/{id}/similar`
-Future-ready AI Seam endpoints. Returns standardized `{"status": "not_available"}` structure.
+### `GET /complaints/{id}/similar`
+Live Vector Semantic Duplicate Detection endpoint using 384-dimensional FastEmbed multilingual ONNX embeddings and spatio-temporal hybrid scoring.
+- **Query Parameters**:
+  - `limit`: integer (default: 5)
+  - `threshold`: float (default: 0.60)
+- **Response**: List of candidate matching grievances with semantic similarity, geodesic distance (meters), and composite duplicate scores.
+
+### `POST /complaints/check-duplicate` & `POST /public/issues/check-duplicate`
+Public and authenticated pre-submission duplicate detection seam. Evaluates title, description, and GPS coordinates against active neighborhood reports.
+- **Specification**: See detailed documentation in [`docs/architecture/semantic-duplicate-detection.md`](./architecture/semantic-duplicate-detection.md).
+
+### `POST /complaints/merge-cluster`
+Merges multiple duplicate grievances under a Master Incident (`ComplaintCluster`). Restricted to Nodal Officers and Admins.
 
 ---
 
